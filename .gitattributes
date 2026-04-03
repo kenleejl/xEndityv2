@@ -1,0 +1,40 @@
+# Normalize line endings to LF on commit, checkout for everyone
+* text=auto eol=lf
+
+# Explicitly declare text files
+*.py text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.sh text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.rs text eol=lf
+*.sql text eol=lf
+*.env text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf
+*.lock text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+Dockerfile text eol=lf
+manage.py text eol=lf
+
+# Binary files — no line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webmanifest binary
+*.so binary
+*.dll binary
+*.exe binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
