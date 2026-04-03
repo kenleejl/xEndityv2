@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Initialize {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{% url 'xformation:device_detail' device.id %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Device
+        </a>
+    </div>
+
+    <!-- Header Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-microchip mr-3 text-indigo-500"></i> 
+            Initialize {{ device.name }}
+        </h2>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">
+            {{ device.firmware.model.manufacturer }} {{ device.firmware.model.model_number }}
+        </p>
+    </div>
+
+    <!-- Error Logs -->
+    {% if error_logs %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-6 mb-8">
+        <h5 class="text-lg font-semibold text-red-800 dark:text-red-200 flex items-center mb-3">
+            <i class="fas fa-exclamation-triangle mr-2"></i> Initialization Failed
+        </h5>
+        <pre class="text-sm text-red-700 dark:text-red-300 overflow-auto max-h-80 bg-red-100 dark:bg-red-900/30 p-4 rounded">{% for log in error_logs %}{{ log }}
+{% endfor %}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Two Choice Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Quick Setup -->
+        <form method="post" class="h-full">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="init_defaults">
+            <button type="submit" class="w-full h-full text-left group">
+                <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 h-full flex flex-col p-8 text-white">
+                    <div class="flex items-center mb-6">
+                        <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm">
+                            <i class="fas fa-bolt text-3xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold ml-4">Quick Setup</h3>
+                    </div>
+                    
+                    <p class="text-white/90 text-lg mb-6">Initialize with sensible defaults for immediate testing</p>
+                    
+                    <h5 class="text-lg font-semibold mb-3">Default Configuration:</h5>
+                    <ul class="space-y-3 flex-grow mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>SSH enabled (password: root)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>Telemetry with execve-only strace</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>Macvlan network with IPAM</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>Auto-shutdown disabled</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>Device files fixed</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-green-200"></i>
+                            <span>Init stub created</span>
+                        </li>
+                    </ul>
+                    
+                    <div class="bg-white/20 hover:bg-white/30 transition-colors duration-200 rounded-xl py-4 px-6 text-center font-semibold text-lg">
+                        <i class="fas fa-play mr-2"></i> Start Quick Setup
+                    </div>
+                </div>
+            </button>
+        </form>
+
+        <!-- Advanced Setup -->
+        <form method="post" class="h-full">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="show_config">
+            <button type="submit" class="w-full h-full text-left group">
+                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 h-full flex flex-col p-8 text-white">
+                    <div class="flex items-center mb-6">
+                        <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm">
+                            <i class="fas fa-cog text-3xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold ml-4">Advanced Setup</h3>
+                    </div>
+                    
+                    <p class="text-white/90 text-lg mb-6">Customize configuration before initialization</p>
+                    
+                    <h5 class="text-lg font-semibold mb-3">Customize:</h5>
+                    <ul class="space-y-3 flex-grow mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-blue-200"></i>
+                            <span>SSH password</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-blue-200"></i>
+                            <span>Telemetry filters</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-blue-200"></i>
+                            <span>Network settings (static IP or IPAM)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-blue-200"></i>
+                            <span>Custom init scripts</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle mr-3 mt-1 text-blue-200"></i>
+                            <span>All other options</span>
+                        </li>
+                    </ul>
+                    
+                    <div class="bg-white/20 hover:bg-white/30 transition-colors duration-200 rounded-xl py-4 px-6 text-center font-semibold text-lg">
+                        <i class="fas fa-sliders-h mr-2"></i> Configure Options
+                    </div>
+                </div>
+            </button>
+        </form>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-6">
+        <h5 class="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center mb-4">
+            <i class="fas fa-info-circle mr-2"></i> What happens during initialization?
+        </h5>
+        <ol class="space-y-2 text-blue-700 dark:text-blue-300 list-decimal list-inside">
+            <li>Run penguin init to create project structure</li>
+            <li>Fix broken device files (/dev/null, /dev/zero, etc.)</li>
+            <li>Disable auto-shutdown plugins</li>
+            <li>Configure SSH access with your password</li>
+            <li>Enable filtered strace telemetry</li>
+            <li>Create init stub for custom scripts</li>
+            <li>Setup macvlan networking</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

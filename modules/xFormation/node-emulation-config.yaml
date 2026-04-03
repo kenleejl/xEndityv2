@@ -1,0 +1,40 @@
+# Default configuration for Node Emulation Engine (xFormation)
+# These defaults are used when automated initialization flow is selected
+
+# Network Configuration
+network:
+  # IP assignment mode: 'static' or 'ipam'
+  # - 'ipam': Docker automatically assigns IP from macvlan network (recommended for multiple instances)
+  # - 'static': Use the IP address specified below
+  mode: static
+  
+  # Static IP address (used only when mode is 'static')
+  # Format: Must be on the same subnet as the host network
+  # Default: 192.168.x.248 (auto-detected network prefix)
+  static_ip: 192.168.1.248
+  
+  # Subnet and gateway are auto-detected from host network
+  # Override only if you need custom values
+  # subnet: 192.168.1.0/24
+  # gateway: 192.168.1.1
+
+# Credentials Configuration
+credentials:
+  # Username for SSH/Telnet access (typically 'root' for embedded devices)
+  username: root
+  
+  # Password for the specified username
+  # This will be hashed appropriately based on the device's hash type (detected by xScout)
+  password: root
+
+# Telemetry Configuration (Optional)
+telemetry:
+  # Enable telemetry collection (strace, syscalls, network traffic)
+  enabled: true
+  
+  # Strace filter: 'execve' (fast, command logging only) or 'all' (full syscalls, slower)
+  strace_filter: execve
+
+# Custom Init Script (Optional)
+# Uncomment and provide path to upload a custom init script
+# custom_init_path: /path/to/custom/init.sh

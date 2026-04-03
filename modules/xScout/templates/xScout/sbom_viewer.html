@@ -1,0 +1,515 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}xEndity - SBOM Viewer{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-list-alt text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Software Bill of Materials Viewer</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        <a href="{% url 'xscout:firmware_analysis' firmware_id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Analysis Overview
+        </a>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <a href="{% url 'xscout:security_analysis_detail' firmware_id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Security Analysis
+        </a>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">SBOM Viewer</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-cube text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Software Bill of Materials</h1>
+                    {% if firmware %}
+                    <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">
+                        {{ firmware.model.manufacturer.name }} {{ firmware.model.model_number }} - {{ firmware.version }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Export Button -->
+            <a href="?export=csv{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}" 
+               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-150">
+                <i class="fas fa-download mr-2"></i>
+                Export to CSV
+            </a>
+        </div>
+    </div>
+
+    {% if stats %}
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats.total_packages }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Total Packages</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats.filtered_count }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Shown</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ stats.binaries }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Binaries</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ stats.kernel_modules }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Kernel Modules</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-teal-600 dark:text-teal-400">{{ stats.versioned }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Versioned</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ stats.with_purl }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">With PURL</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-t-xl">
+            <h2 class="text-lg font-bold text-white flex items-center">
+                <i class="fas fa-filter mr-2"></i>
+                Filters & Search
+            </h2>
+        </div>
+        
+        <form method="get" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <!-- Search -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-search mr-1"></i> Search
+                    </label>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_query }}"
+                           placeholder="Package name, supplier, PURL..."
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <!-- Package Type Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-cube mr-1"></i> Package Type
+                    </label>
+                    <select name="type" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">All Types</option>
+                        {% for pkg_type in package_types %}
+                        <option value="{{ pkg_type }}" {% if pkg_type == package_type_filter %}selected{% endif %}>
+                            {{ pkg_type }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Supplier Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-building mr-1"></i> Supplier
+                    </label>
+                    <select name="supplier" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">All Suppliers</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier }}" {% if supplier == supplier_filter %}selected{% endif %}>
+                            {{ supplier }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Version Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-tag mr-1"></i> Version Status
+                    </label>
+                    <select name="version_status" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">All Packages</option>
+                        <option value="versioned" {% if version_filter == 'versioned' %}selected{% endif %}>Versioned Only</option>
+                        <option value="unversioned" {% if version_filter == 'unversioned' %}selected{% endif %}>Unversioned Only</option>
+                    </select>
+                </div>
+                
+                <!-- PURL Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-link mr-1"></i> PURL Status
+                    </label>
+                    <select name="purl_status" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">All Packages</option>
+                        <option value="has_purl" {% if purl_filter == 'has_purl' %}selected{% endif %}>With PURL</option>
+                        <option value="no_purl" {% if purl_filter == 'no_purl' %}selected{% endif %}>Without PURL</option>
+                    </select>
+                </div>
+                
+                <!-- Page Size -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <i class="fas fa-list-ol mr-1"></i> Items per Page
+                    </label>
+                    <select name="page_size" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
+                        <option value="50" {% if page_size == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if page_size == 100 %}selected{% endif %}>100</option>
+                        <option value="250" {% if page_size == 250 %}selected{% endif %}>250</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Filter Buttons -->
+            <div class="flex items-center space-x-3">
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-150">
+                    <i class="fas fa-filter mr-2"></i>Apply Filters
+                </button>
+                <a href="{% url 'xscout:sbom_viewer' firmware_id %}" 
+                   class="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-md transition duration-150">
+                    <i class="fas fa-times mr-2"></i>Clear All
+                </a>
+            </div>
+            
+            <!-- Active Filters Display -->
+            {% if has_filters %}
+            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div class="flex items-center flex-wrap gap-2">
+                    <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Active Filters:</span>
+                    {% for filter in active_filters %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100">
+                        {{ filter }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Package List -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-gradient-to-r from-green-500 to-green-600 p-4">
+            <h2 class="text-xl font-bold text-white">Package Inventory ({{ stats.filtered_count }} packages)</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left">
+                            <a href="?sort=name&reverse={% if sort_by == 'name' and not reverse_sort %}true{% else %}false{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}" 
+                               class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400">
+                                Package Name
+                                {% if sort_by == 'name' %}
+                                    {% if reverse_sort %}
+                                        <i class="fas fa-sort-down ml-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort-up ml-1"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="fas fa-sort ml-1 opacity-30"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-4 py-3 text-left">
+                            <a href="?sort=version&reverse={% if sort_by == 'version' and not reverse_sort %}true{% else %}false{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}" 
+                               class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400">
+                                Version
+                                {% if sort_by == 'version' %}
+                                    {% if reverse_sort %}
+                                        <i class="fas fa-sort-down ml-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort-up ml-1"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="fas fa-sort ml-1 opacity-30"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-4 py-3 text-left">
+                            <a href="?sort=type&reverse={% if sort_by == 'type' and not reverse_sort %}true{% else %}false{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}" 
+                               class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400">
+                                Type
+                                {% if sort_by == 'type' %}
+                                    {% if reverse_sort %}
+                                        <i class="fas fa-sort-down ml-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort-up ml-1"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="fas fa-sort ml-1 opacity-30"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-4 py-3 text-left">
+                            <a href="?sort=supplier&reverse={% if sort_by == 'supplier' and not reverse_sort %}true{% else %}false{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}" 
+                               class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-blue-600 dark:hover:text-blue-400">
+                                Supplier
+                                {% if sort_by == 'supplier' %}
+                                    {% if reverse_sort %}
+                                        <i class="fas fa-sort-down ml-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort-up ml-1"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="fas fa-sort ml-1 opacity-30"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            PURL
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Locations
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for package in packages %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center space-x-2">
+                                {% if package.type == 'binary' %}
+                                    <i class="fas fa-file-code text-purple-500" title="Binary"></i>
+                                {% elif package.type == 'linux-kernel-module' %}
+                                    <i class="fas fa-microchip text-orange-500" title="Kernel Module"></i>
+                                {% else %}
+                                    <i class="fas fa-cube text-gray-500" title="{{ package.type }}"></i>
+                                {% endif %}
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ package.name }}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if package.version %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100">
+                                    <i class="fas fa-tag mr-1 text-xs"></i>
+                                    {{ package.version }}
+                                </span>
+                            {% else %}
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">No version</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                {% if package.type == 'binary' %}bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100
+                                {% elif package.type == 'linux-kernel-module' %}bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-100
+                                {% else %}bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
+                                {{ package.type|default:"unknown" }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if package.supplier %}
+                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ package.supplier }}</span>
+                            {% else %}
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if package.purl %}
+                                <div class="flex items-center space-x-2">
+                                    <code class="text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded max-w-xs truncate" title="{{ package.purl }}">
+                                        {{ package.purl }}
+                                    </code>
+                                    <button onclick="copyToClipboard('{{ package.purl }}')" 
+                                            class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+                                            title="Copy PURL">
+                                        <i class="fas fa-copy text-xs"></i>
+                                    </button>
+                                </div>
+                            {% else %}
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">No PURL</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if package.locations %}
+                                <button onclick="toggleLocations('loc-{{ forloop.counter }}')" 
+                                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                                    <i class="fas fa-folder-open mr-1"></i>
+                                    {{ package.locations|length }} location{{ package.locations|length|pluralize }}
+                                </button>
+                                <div id="loc-{{ forloop.counter }}" class="hidden mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded max-w-md">
+                                    {% for location in package.locations|slice:":5" %}
+                                        <code class="block text-xs text-gray-700 dark:text-gray-300 mb-1 truncate" title="{{ location }}">{{ location }}</code>
+                                    {% endfor %}
+                                    {% if package.locations|length > 5 %}
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 italic">... and {{ package.locations|length|add:"-5" }} more</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">No locations</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="showPackageDetails({{ forloop.counter }})" 
+                                    class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                            <!-- Hidden details for modal -->
+                            <div id="details-{{ forloop.counter }}" class="hidden">
+                                <div class="space-y-3">
+                                    <div><strong>Name:</strong> {{ package.name }}</div>
+                                    <div><strong>Version:</strong> {{ package.version|default:"N/A" }}</div>
+                                    <div><strong>Type:</strong> {{ package.type|default:"unknown" }}</div>
+                                    <div><strong>Supplier:</strong> {{ package.supplier|default:"Unknown" }}</div>
+                                    {% if package.purl %}
+                                    <div><strong>PURL:</strong> <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{{ package.purl }}</code></div>
+                                    {% endif %}
+                                    {% if package.cpes %}
+                                    <div><strong>CPEs:</strong>
+                                        {% for cpe in package.cpes %}
+                                            <code class="block text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mt-1">{{ cpe }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% if package.license_declared %}
+                                    <div><strong>License:</strong> {{ package.license_declared }}</div>
+                                    {% endif %}
+                                    {% if package.locations %}
+                                    <div><strong>Locations:</strong>
+                                        {% for location in package.locations %}
+                                            <code class="block text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mt-1">{{ location }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p>No packages found matching your criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-t border-gray-200 dark:border-gray-600 sm:px-6">
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} packages
+                </div>
+                <div class="flex space-x-2">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}&page_size={{ page_size }}&sort={{ sort_by }}&reverse={{ reverse_sort }}" 
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">
+                            Previous
+                        </a>
+                    {% endif %}
+                    
+                    <span class="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if package_type_filter %}&type={{ package_type_filter }}{% endif %}{% if supplier_filter %}&supplier={{ supplier_filter }}{% endif %}{% if version_filter %}&version_status={{ version_filter }}{% endif %}{% if purl_filter %}&purl_status={{ purl_filter }}{% endif %}&page_size={{ page_size }}&sort={{ sort_by }}&reverse={{ reverse_sort }}" 
+                           class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">
+                            Next
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal for Package Details -->
+<div id="packageModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Package Details</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modalContent" class="text-gray-700 dark:text-gray-300">
+                <!-- Content will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleLocations(id) {
+    const element = document.getElementById(id);
+    element.classList.toggle('hidden');
+}
+
+function showPackageDetails(packageId) {
+    const detailsElement = document.getElementById('details-' + packageId);
+    const modalContent = document.getElementById('modalContent');
+    const modal = document.getElementById('packageModal');
+    
+    modalContent.innerHTML = detailsElement.innerHTML;
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    const modal = document.getElementById('packageModal');
+    modal.classList.add('hidden');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show a brief "Copied!" message
+        const tempMsg = document.createElement('div');
+        tempMsg.textContent = 'Copied!';
+        tempMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        document.body.appendChild(tempMsg);
+        setTimeout(() => {
+            document.body.removeChild(tempMsg);
+        }, 2000);
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+// Close modal when clicking outside
+document.getElementById('packageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+</script>
+
+{% endblock %}

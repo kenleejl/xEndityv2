@@ -1,0 +1,464 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - xScout{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<style>
+    .console-output {
+        background-color: #1a1a1a;
+        color: #e5e7eb;
+        font-family: 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        height: 200px;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+        border: 1px solid #374151;
+    }
+    .console-line {
+        margin: 0;
+        padding: 2px 0;
+        line-height: 1.4;
+    }
+    .progress-wrapper {
+        position: relative;
+    }
+    .progress-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        line-height: 2rem;
+        font-weight: 600;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Light/Dark mode improvements */
+    @media (prefers-color-scheme: dark) {
+        .console-output {
+            background-color: #111827;
+            border-color: #374151;
+        }
+        
+        .console-line.error {
+            color: #f87171;
+        }
+        
+        .console-line.success {
+            color: #6ee7b7;
+        }
+        
+        .console-line.warning {
+            color: #fcd34d;
+        }
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .console-output {
+            background-color: #1a1a1a;
+            color: #e5e7eb;
+            border-color: #374151;
+        }
+        
+        .console-line.error {
+            color: #ef4444;
+        }
+        
+        .console-line.success {
+            color: #10b981;
+        }
+        
+        .console-line.warning {
+            color: #f59e0b;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        {% if selected_firmware %}
+        <a href="{% url 'xscout:firmware_analysis' selected_firmware.id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Analysis Overview
+        </a>
+        {% else %}
+        <a href="{% url 'xscout:index' %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            xScout
+        </a>
+        {% endif %}
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">Firmware Binary Analysis</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-3">
+            <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                <i class="fas fa-search text-white text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Firmware Binary Analysis</h1>
+                {% if selected_firmware %}
+                <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ selected_firmware.model.manufacturer.name }} {{ selected_firmware.model.model_number }} - {{ selected_firmware.version }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden CSRF token field for JavaScript -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <!-- Error Message -->
+    {% if error %}
+    <div class="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-exclamation-triangle text-red-500 dark:text-red-400"></i>
+            <p class="text-red-800 dark:text-red-200">{{ error }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Firmware Selection Card -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-file-code text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Select Firmware</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form action="{% url 'xscout:analyze' %}" method="get" id="firmware-select-form">
+                    <div class="mb-6">
+                        <label for="firmware_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Choose Firmware to Analyze
+                        </label>
+                        <select name="firmware_id" id="firmware_id" 
+                                class="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 dark:focus:border-green-400 text-gray-900 dark:text-white transition-colors duration-200">
+                            <option value="">-- Select Firmware --</option>
+                            {% for firmware in firmwares %}
+                            <option value="{{ firmware.id }}" {% if selected_firmware.id == firmware.id %}selected{% endif %}>
+                                {{ firmware.model }} - {{ firmware.version }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" 
+                            class="w-full inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <i class="fas fa-search"></i>
+                        <span>View Firmware</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Firmware Details Card -->
+        {% if selected_firmware %}
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-info-circle text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Firmware Details</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                    {{ selected_firmware.model }} - {{ selected_firmware.version }}
+                </h3>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Manufacturer:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.model.manufacturer }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Device Type:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.model.device_type }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">File Size:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.file_size|filesizeformat }}</span>
+                    </div>
+                    <div class="flex justify-between items-start py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">MD5:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ selected_firmware.md5 }}</code>
+                    </div>
+                    <div class="flex justify-between items-start py-2">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">SHA256:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ selected_firmware.sha256 }}</code>
+                    </div>
+                </div>
+                
+                <!-- Analysis Status -->
+                {% if analysis %}
+                    {% if analysis.status == 'completed' %}
+                    <div class="text-center p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg shadow-sm">
+                        <p class="text-green-700 dark:text-green-300 font-medium flex items-center justify-center">
+                            <i class="fas fa-check-circle mr-2"></i> Analysis Completed
+                        </p>
+                    </div>
+                    {% elif analysis.status == 'failed' %}
+                    <div class="text-center p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg shadow-sm">
+                        <p class="text-red-700 dark:text-red-300 font-medium flex items-center justify-center">
+                            <i class="fas fa-times-circle mr-2"></i> Analysis Failed
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg shadow-sm">
+                        <p class="text-yellow-700 dark:text-yellow-300 font-medium flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin mr-2"></i> Analysis {{ analysis.status }} ({{ analysis.progress }}%)
+                        </p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm">
+                        <p class="text-blue-700 dark:text-blue-300 font-medium flex items-center justify-center">
+                            <i class="fas fa-info-circle mr-2"></i> Ready for Analysis
+                        </p>
+                        <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Use the main analysis page to start firmware binary analysis</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Analysis Progress Section -->
+    {% if analysis and analysis.status != 'completed' and analysis.status != 'failed' %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-spinner fa-spin text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Analysis Progress</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="progress-wrapper mb-6">
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-8 overflow-hidden">
+                    <div id="progress-bar" 
+                         class="bg-gradient-to-r from-green-500 to-emerald-600 h-8 rounded-full transition-all duration-500 ease-out flex items-center justify-center"
+                         {% if analysis.progress %}style="width: {{ analysis.progress }}%"{% else %}style="width: 0%"{% endif %}>
+                    </div>
+                </div>
+                <div class="progress-text">
+                    <span id="progress-text">{{ analysis.progress }}% - {{ analysis.status }}</span>
+                </div>
+            </div>
+            
+            <div class="console-output" id="console-output">
+                <p class="console-line success">Starting analysis...</p>
+            </div>
+            
+            <input type="hidden" id="analysis-id" value="{{ analysis.id }}">
+            <input type="hidden" id="current-status" value="{{ analysis.status }}">
+            <input type="hidden" id="current-progress" value="{{ analysis.progress }}">
+        </div>
+    </div>
+    {% endif %}
+
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Check if jQuery is loaded properly
+    if (typeof jQuery === 'undefined') {
+        // Dynamically load jQuery if not available
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
+        script.onload = function() {
+            initializeScripts();
+        };
+        document.head.appendChild(script);
+    } else {
+        initializeScripts();
+    }
+    
+    // Flag to prevent multiple submissions
+    let isProcessing = false;
+    
+    // Main initialization function
+    function initializeScripts() {
+        // Handle firmware selection change
+        $('#firmware_id').change(function() {
+            $('#firmware-select-form').submit();
+        });
+        
+        // Handle start analysis button click
+        $('.start-analysis-btn').on('click', function(event) {
+            event.preventDefault(); // Prevent any default behavior
+            
+            // Prevent multiple clicks
+            if (isProcessing) {
+                console.log('Already processing a request, ignoring click');
+                return;
+            }
+            
+            // Set processing flag
+            isProcessing = true;
+            
+            // Try multiple methods to get the firmware ID
+            let firmwareId = $(this).data('firmware-id');
+            if (!firmwareId) {
+                firmwareId = $(this).attr('data-firmware-id');
+            }
+            if (!firmwareId && this.dataset) {
+                firmwareId = this.dataset.firmwareId;
+            }
+            
+            if (!firmwareId) {
+                alert('Error: No firmware ID found');
+                isProcessing = false;
+                return;
+            }
+            
+            // Disable the button
+            $(this).prop('disabled', true);
+            $(this).html('<i class="fas fa-spinner fa-spin"></i><span class="ml-2">Starting...</span>');
+            
+            // Store button reference
+            const clickedButton = $(this);
+            
+            // Get CSRF token
+            const csrftoken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+            
+            // Get AJAX URL from data attribute or use the default
+            let ajaxUrl = $(this).data('analysis-url');
+            if (!ajaxUrl && this.dataset) {
+                ajaxUrl = this.dataset.analysisUrl;
+            }
+            // Fallback to template URL if data attribute is not available
+            if (!ajaxUrl) {
+                ajaxUrl = '/xscout/analyze/start/';
+            }
+            
+            console.log('Starting analysis with firmware ID:', firmwareId, 'URL:', ajaxUrl);
+            
+            // Start analysis
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    firmware_id: firmwareId
+                },
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                },
+                success: function(response) {
+                    console.log('jQuery AJAX success:', response);
+                    if (response.success) {
+                        // Reload the page with the analysis ID
+                        window.location.href = `/xscout/analyze/?firmware_id=${firmwareId}`;
+                    } else {
+                        // Enable the button again
+                        clickedButton.prop('disabled', false);
+                        clickedButton.html('<i class="fas fa-play"></i><span class="ml-2">Start Analysis</span>');
+                        
+                        // Reset processing flag
+                        isProcessing = false;
+                        
+                        // Show error
+                        alert('Server error: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('jQuery AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    
+                    // Enable the button again
+                    clickedButton.prop('disabled', false);
+                    clickedButton.html('<i class="fas fa-play"></i><span class="ml-2">Start Analysis</span>');
+                    
+                    // Reset processing flag
+                    isProcessing = false;
+                    
+                    // Show error
+                    alert('Failed to start analysis. Please try again.');
+                }
+            });
+        });
+        
+        // Check if there's an ongoing analysis
+        const analysisId = $('#analysis-id').val();
+        if (analysisId) {
+            const consoleOutput = $('#console-output');
+            
+            // Function to update progress
+            function updateProgress() {
+                $.ajax({
+                    url: `/xscout/analyze/status/${analysisId}/`,
+                    type: 'GET',
+                    success: function(response) {
+                        const status = response.status;
+                        const progress = response.progress;
+                        
+                        // Update progress bar
+                        $('#progress-bar').css('width', `${progress}%`);
+                        $('#progress-bar').attr('aria-valuenow', progress);
+                        
+                        // Update progress text
+                        $('#progress-text').text(`${progress}% - ${status}`);
+                        
+                        // Add status to console with appropriate styling
+                        let messageClass = '';
+                        if (status === 'completed') {
+                            messageClass = 'success';
+                        } else if (status === 'failed') {
+                            messageClass = 'error';
+                        } else if (status.includes('warning') || status.includes('detecting')) {
+                            messageClass = 'warning';
+                        }
+                        
+                        consoleOutput.append(`<p class="console-line ${messageClass}">${status} - ${progress}%</p>`);
+                        consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                        
+                        // Check if completed or failed
+                        if (status === 'completed' || status === 'failed') {
+                            // Reload the page
+                            window.location.reload();
+                        } else {
+                            // Continue polling
+                            setTimeout(updateProgress, 2000);
+                        }
+                    },
+                    error: function() {
+                        consoleOutput.append(`<p class="console-line error">Error checking status</p>`);
+                        consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                        
+                        // Try again after a delay
+                        setTimeout(updateProgress, 5000);
+                    }
+                });
+            }
+            
+            // Start polling for progress updates
+            const currentStatus = $('#current-status').val();
+            if (currentStatus !== 'completed' && currentStatus !== 'failed') {
+                setTimeout(updateProgress, 1000);
+            }
+        }
+    }
+</script>
+{% endblock %} 

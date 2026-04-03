@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - xFormation{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8 text-center">
+        <div class="flex items-center justify-center space-x-3 mb-4">
+            <div class="p-3 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl shadow-lg">
+                <i class="fas fa-project-diagram text-white text-2xl"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{{ title }}</h1>
+        </div>
+    </div>
+    
+    <!-- Coming Soon Card -->
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+                <div class="flex items-center justify-center space-x-3">
+                    <i class="fas fa-info-circle text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">{{ status }}</h2>
+                </div>
+            </div>
+            
+            <div class="p-12 text-center">
+                <!-- Large Icon -->
+                <div class="mb-8">
+                    <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-2xl shadow-lg">
+                        <i class="fas fa-tools text-4xl text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="space-y-6">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">This feature is coming soon!</h3>
+                    
+                    <div class="prose prose-lg prose-gray dark:prose-invert max-w-none">
+                        <p class="text-gray-600 dark:text-gray-300">
+                            The xFormation module is under development and will be available in a future update.
+                        </p>
+                        <p class="text-gray-600 dark:text-gray-300">
+                            xFormation will provide firmware composition analysis, component identification, and dependency mapping to help you understand your device's architecture.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature Preview -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                        <div class="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                            <div class="w-8 h-8 bg-purple-100 dark:bg-purple-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-search text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Component Discovery</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Automatically identify firmware components and libraries</p>
+                        </div>
+                        
+                        <div class="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                            <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-project-diagram text-indigo-600 dark:text-indigo-400"></i>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Dependency Mapping</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Visualize component relationships and dependencies</p>
+                        </div>
+                        
+                        <div class="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                            <div class="w-8 h-8 bg-purple-100 dark:bg-purple-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-shield-alt text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Security Analysis</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Assess security implications of firmware components</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Back Button -->
+                    <div class="pt-6">
+                        <a href="{% url 'xformation:index' %}" 
+                           class="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Back to xFormation</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

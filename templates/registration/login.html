@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - xEndity{% endblock %}
+
+{% block page_title %}Login{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header Section -->
+        <div class="text-center">
+            <div class="mx-auto h-24 w-24 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl mb-6 animate-bounce-gentle">
+                <i class="fas fa-microchip text-white text-3xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome back to xEndity</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400">IoT Security Platform</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden backdrop-blur-sm">
+            <!-- Form Header -->
+            <div class="px-8 py-6 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800">
+                <h3 class="text-xl font-semibold text-white text-center flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt mr-3"></i>
+                    Sign In
+                </h3>
+            </div>
+
+            <!-- Form Body -->
+            <div class="px-8 py-8">
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Username Field -->
+                    <div class="space-y-2">
+                        <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-user mr-2 text-primary-500"></i>Username
+                        </label>
+                        <input type="text" 
+                               name="{{ form.username.name }}" 
+                               id="{{ form.username.id_for_label }}"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-primary-300"
+                               placeholder="Enter your username"
+                               required>
+                        {% if form.username.errors %}
+                            <div class="text-red-500 text-sm mt-1">
+                                {{ form.username.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="space-y-2">
+                        <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-lock mr-2 text-primary-500"></i>Password
+                        </label>
+                        <div class="relative">
+                            <input type="password" 
+                                   name="{{ form.password.name }}" 
+                                   id="{{ form.password.id_for_label }}"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-primary-300"
+                                   placeholder="Enter your password"
+                                   required>
+                            <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+                                <i id="password-icon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="text-red-500 text-sm mt-1">
+                                {{ form.password.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Form Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                                <span class="text-red-700 dark:text-red-200 text-sm">{{ form.non_field_errors.0 }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Remember Me & Forgot Password -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="remember_me" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                            <label for="remember_me" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Remember me</label>
+                        </div>
+                        <a href="{% url 'password_reset' %}" class="text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200 transition-colors duration-200 font-medium">
+                            Forgot password?
+                        </a>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="w-full flex justify-center items-center px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 focus:ring-4 focus:ring-primary-200 dark:focus:ring-primary-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Sign In
+                    </button>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-8 py-6 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Need an account? 
+                    <span class="text-primary-600 dark:text-primary-400 font-medium">Contact administrator</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Security Notice -->
+        <div class="text-center">
+            <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center">
+                <i class="fas fa-shield-alt mr-2 text-green-500"></i>
+                Your connection is secured with industry-standard encryption
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordField = document.getElementById('{{ form.password.id_for_label }}');
+    const passwordIcon = document.getElementById('password-icon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        passwordIcon.classList.remove('fa-eye');
+        passwordIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        passwordIcon.classList.remove('fa-eye-slash');
+        passwordIcon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %} 

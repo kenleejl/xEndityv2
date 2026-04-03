@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configure {{ device.name }}{% endblock %}
+
+{% block extra_head %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ipamRadio = document.getElementById('network_mode_ipam');
+    const staticRadio = document.getElementById('network_mode_static');
+    const staticIpFields = document.getElementById('static_ip_fields');
+
+    function toggleStaticIpFields() {
+        if (staticRadio.checked) {
+            staticIpFields.classList.remove('hidden');
+        } else {
+            staticIpFields.classList.add('hidden');
+        }
+    }
+
+    ipamRadio.addEventListener('change', toggleStaticIpFields);
+    staticRadio.addEventListener('change', toggleStaticIpFields);
+
+    toggleStaticIpFields();
+
+    // Custom init textarea utilities
+    const CUSTOM_INIT_TEMPLATE = JSON.parse(
+        document.getElementById('custom-init-template-data').textContent
+    );
+
+    function loadContentIntoTextarea(content, sourceName) {
+        const textarea = document.getElementById('custom_init_text');
+        if (textarea.value.trim()) {
+            if (!confirm('Replace current content with ' + sourceName + '?')) return;
+        }
+        textarea.value = content;
+    }
+
+    // "Use template" button
+    const useTemplateBtn = document.getElementById('use_template_btn');
+    if (useTemplateBtn) {
+        useTemplateBtn.addEventListener('click', function() {
+            loadContentIntoTextarea(CUSTOM_INIT_TEMPLATE, 'skeleton template');
+        });
+    }
+
+    // "Load from file" button — FileReader with confirm-before-replace
+    const fileInput = document.getElementById('custom_init_file');
+    const fileLabel = document.getElementById('custom_init_file_label');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                loadContentIntoTextarea(e.target.result, 'loaded file');
+                fileLabel.textContent = file.name;
+            };
+            reader.readAsText(file);
+            fileInput.value = '';
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{% url 'xformation:device_initialize' device.id %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Initialize
+        </a>
+    </div>
+
+    <!-- Header Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-sliders-h mr-3 text-indigo-500"></i> 
+            Configure {{ device.name }}
+        </h2>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">
+            Customize device initialization settings
+        </p>
+    </div>
+
+    <!-- Error Logs -->
+    {% if error_logs %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-6 mb-8">
+        <h5 class="text-lg font-semibold text-red-800 dark:text-red-200 flex items-center mb-3">
+            <i class="fas fa-exclamation-triangle mr-2"></i> Configuration Failed
+        </h5>
+        <pre class="text-sm text-red-700 dark:text-red-300 overflow-auto max-h-80 bg-red-100 dark:bg-red-900/30 p-4 rounded">{% for log in error_logs %}{{ log }}
+{% endfor %}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Configuration Form -->
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Credentials Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500 flex items-center">
+                <i class="fas fa-key mr-2 text-indigo-500"></i> Credentials
+            </h4>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
+                    <input type="text" value="root" disabled 
+                           class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Username is fixed as 'root'</p>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                    <input type="text" id="password" name="password" value="{{ form_data.credentials.password|default:'root' }}" required
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">SSH password for root user</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kernel Version Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500 flex items-center">
+                <i class="fas fa-microchip mr-2 text-indigo-500"></i> Kernel Version
+            </h4>
+            <div class="space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-blue-800 dark:text-blue-200 flex items-start">
+                        <i class="fas fa-info-circle mr-2 mt-0.5"></i>
+                        <span><strong>Recommendation:</strong> {{ kernel_recommendation }}</span>
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Select Kernel Version</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="radio" id="kernel_4_10" name="kernel_version" value="4.10" {% if recommended_kernel == '4.10' or form_data.kernel_version == '4.10' %}checked{% endif %}
+                                   class="w-4 h-4 text-indigo-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500">
+                            <label for="kernel_4_10" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                Kernel 4.10 (Legacy compatibility - for older firmware)
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="kernel_6_13" name="kernel_version" value="6.13" {% if recommended_kernel == '6.13' or form_data.kernel_version == '6.13' %}checked{% endif %}
+                                   class="w-4 h-4 text-indigo-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500">
+                            <label for="kernel_6_13" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                Kernel 6.13 (Modern support - for newer firmware)
+                            </label>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Selection is based on detected firmware kernel version.
+                        <strong>Use 4.10 if firmware kernel ≤ 4.10, otherwise use 6.13.</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500 flex items-center">
+                <i class="fas fa-chart-line mr-2 text-indigo-500"></i> Telemetry
+            </h4>
+            <div class="space-y-4">
+                <div class="flex items-center">
+                    <input type="checkbox" id="telemetry" name="telemetry" {% if form_data.telemetry.enabled|default:True %}checked{% endif %}
+                           class="w-4 h-4 text-indigo-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500">
+                    <label for="telemetry" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Enable strace telemetry
+                    </label>
+                </div>
+                <div>
+                    <label for="strace_filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Strace Filter</label>
+                    <select id="strace_filter" name="strace_filter"
+                            class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white">
+                        <option value="execve" {% if form_data.telemetry.strace_filter == 'execve' or not form_data %}selected{% endif %}>execve only (fast boot)</option>
+                        <option value="open,openat,read,write,execve" {% if form_data.telemetry.strace_filter == 'open,openat,read,write,execve' %}selected{% endif %}>File operations + execve</option>
+                        <option value="network" {% if form_data.telemetry.strace_filter == 'network' %}selected{% endif %}>Network syscalls</option>
+                        <option value="all" {% if form_data.telemetry.strace_filter == 'all' %}selected{% endif %}>All syscalls (slow)</option>
+                    </select>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Which system calls to trace for telemetry</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500 flex items-center">
+                <i class="fas fa-network-wired mr-2 text-indigo-500"></i> Network Configuration
+            </h4>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">IP Assignment Mode</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="radio" id="network_mode_ipam" name="network_mode" value="ipam" {% if form_data.network.mode == 'ipam' or not form_data %}checked{% endif %}
+                                   class="w-4 h-4 text-indigo-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500">
+                            <label for="network_mode_ipam" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                IPAM (Automatic) - Let Docker assign IP
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="network_mode_static" name="network_mode" value="static" {% if form_data.network.mode == 'static' %}checked{% endif %}
+                                   class="w-4 h-4 text-indigo-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500">
+                            <label for="network_mode_static" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                Static IP - Manually specify IP address
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="static_ip_fields" class="hidden space-y-4">
+                    <div>
+                        <label for="static_ip" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Static IP Address</label>
+                        <input type="text" id="static_ip" name="static_ip" value="{{ form_data.network.static_ip }}" placeholder="192.168.1.100"
+                               class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="subnet" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subnet</label>
+                    <input type="text" id="subnet" name="subnet" value="{{ form_data.network.subnet|default:default_subnet }}" placeholder="192.168.1.0/24"
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Auto-detected: {{ default_subnet }}</p>
+                </div>
+
+                <div>
+                    <label for="gateway" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gateway</label>
+                    <input type="text" id="gateway" name="gateway" value="{{ form_data.network.gateway|default:default_gateway }}" placeholder="192.168.1.1"
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Auto-detected: {{ default_gateway }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Init Script Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500 flex items-center">
+                <i class="fas fa-file-code mr-2 text-indigo-500"></i> Custom Init Script (Optional)
+            </h4>
+            <div class="space-y-4">
+                <!-- Injection mode selector -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Injection Mode
+                    </label>
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="init_mode" value="partial_stub" checked
+                                   class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">
+                                <strong>Partial stub</strong> — static_files overlay only (default)
+                            </span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="init_mode" value="full_stub"
+                                   class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">
+                                <strong>Full stub</strong> — redirects igloo_init to your script
+                            </span>
+                        </label>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Partial stub places your script at the stub path via static overlay — igloo_init is unchanged.
+                        Full stub redirects igloo_init to your script (replaces firmware first process).
+                    </p>
+                </div>
+
+                <!-- Stub path -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Stub path (guest filesystem path)
+                    </label>
+                    <input type="text" name="stub_path" value="/igloo/custom_init.sh"
+                           placeholder="/igloo/custom_init.sh"
+                           class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Path where the script will be placed on the guest filesystem.
+                    </p>
+                </div>
+
+                <!-- Wrapper binary path (optional) -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Original binary path <span class="font-normal text-gray-400">(optional — for wrapper scripts)</span>
+                    </label>
+                    <input type="text" name="wrapper_original_path" value=""
+                           placeholder="/sbin/init"
+                           class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        If your script wraps an existing binary, enter its guest path here.
+                        It will be staged at &lt;stub_path&gt;.real so your script can exec it.
+                    </p>
+                </div>
+
+                <!-- Script textarea -->
+                <div class="flex items-center justify-between">
+                    <label for="custom_init_text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Write or paste your init script below
+                    </label>
+                    <div class="flex items-center">
+                        <button type="button" id="use_template_btn"
+                                class="custom-init-action-btn inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 mr-2">
+                            <i class="fas fa-file-alt mr-2"></i> Use template
+                        </button>
+                        <input type="file" id="custom_init_file" name="custom_init" accept=".sh,.txt" class="hidden">
+                        <label for="custom_init_file"
+                               id="custom_init_file_label"
+                               class="cursor-pointer inline-flex items-center px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors duration-200">
+                            <i class="fas fa-folder-open mr-2"></i> Load from file
+                        </label>
+                    </div>
+                </div>
+                <textarea id="custom_init_text" name="custom_init_text" rows="10"
+                          class="w-full px-4 py-3 font-mono text-sm bg-gray-900 text-gray-100 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-vertical"
+                          placeholder="#!/bin/sh&#10;# Custom init script — runs before original device init&#10;&#10;# Example: set hostname&#10;# hostname my-device&#10;"></textarea>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Script runs before the original device init. Leave empty to skip.
+                </p>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex gap-4">
+            <button type="submit"
+                    class="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center">
+                <i class="fas fa-play mr-2"></i> Initialize with These Settings
+            </button>
+            <a href="{% url 'xformation:device_initialize' device.id %}"
+               class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center flex items-center justify-center">
+                Cancel
+            </a>
+        </div>
+        {{ custom_init_template|json_script:"custom-init-template-data" }}
+    </form>
+</div>
+{% endblock %}

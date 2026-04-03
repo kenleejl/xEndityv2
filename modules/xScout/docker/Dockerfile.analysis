@@ -1,0 +1,40 @@
+FROM python:3.9-slim
+
+# Install essential analysis tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binwalk \
+    file \
+    binutils \
+    xxd \
+    util-linux \
+    unzip \
+    ent \
+    gnupg \
+    p7zip-full \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up working directory
+WORKDIR /app
+
+# Copy analysis scripts
+COPY modules/xScout/fw_binary_analysis /app/fw_binary_analysis/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir pymongo python-magic numpy
+
+# Create directories with proper permissions for non-root users
+RUN mkdir -p /firmware /tmp && \
+    chmod 777 /firmware /tmp
+
+# Create script to run the analysis
+COPY modules/xScout/docker/run_analysis.py /app/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+
+# Ensure the app directory is accessible
+RUN chmod -R 755 /app
+
+# Run the analysis script when container starts
+ENTRYPOINT ["python", "/app/run_analysis.py"]

@@ -1,0 +1,673 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ device.name }} - Device Detail{% endblock %}
+
+{% block extra_head %}
+<style>
+    .info-card {
+        transition: all 0.3s ease;
+    }
+    .info-card:hover {
+        transform: translateY(-2px);
+    }
+    .info-card-light {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .info-card-light:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .info-card-dark {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .info-card-dark:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    }
+    .status-indicator {
+        position: relative;
+        display: inline-block;
+    }
+    .status-indicator.success::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .instance-table-row {
+        transition: all 0.2s ease;
+    }
+    .instance-table-row:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+        transform: translateX(4px);
+    }
+    
+    /* ANSI log styling */
+    .ansi-log {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    /* Foreground colors */
+    .ansi-fg-black { color: #000000; }
+    .ansi-fg-red { color: #cd3131; }
+    .ansi-fg-green { color: #0dbc79; }
+    .ansi-fg-yellow { color: #e5e510; }
+    .ansi-fg-blue { color: #2472c8; }
+    .ansi-fg-magenta { color: #bc3fbc; }
+    .ansi-fg-cyan { color: #11a8cd; }
+    .ansi-fg-white { color: #e5e5e5; }
+    .ansi-fg-bright-black { color: #666666; }
+    .ansi-fg-bright-red { color: #f14c4c; }
+    .ansi-fg-bright-green { color: #23d18b; }
+    .ansi-fg-bright-yellow { color: #f5f543; }
+    .ansi-fg-bright-blue { color: #3b8eea; }
+    .ansi-fg-bright-magenta { color: #d670d6; }
+    .ansi-fg-bright-cyan { color: #29b8db; }
+    .ansi-fg-bright-white { color: #e5e5e5; }
+    
+    /* Background colors */
+    .ansi-bg-black { background-color: #000000; }
+    .ansi-bg-red { background-color: #cd3131; }
+    .ansi-bg-green { background-color: #0dbc79; }
+    .ansi-bg-yellow { background-color: #e5e510; }
+    .ansi-bg-blue { background-color: #2472c8; }
+    .ansi-bg-magenta { background-color: #bc3fbc; }
+    .ansi-bg-cyan { background-color: #11a8cd; }
+    .ansi-bg-white { background-color: #e5e5e5; }
+    .ansi-bg-bright-black { background-color: #666666; }
+    .ansi-bg-bright-red { background-color: #f14c4c; }
+    .ansi-bg-bright-green { background-color: #23d18b; }
+    .ansi-bg-bright-yellow { background-color: #f5f543; }
+    .ansi-bg-bright-blue { background-color: #3b8eea; }
+    .ansi-bg-bright-magenta { background-color: #d670d6; }
+    .ansi-bg-bright-cyan { background-color: #29b8db; }
+    .ansi-bg-bright-white { background-color: #e5e5e5; }
+    
+    /* Text formatting */
+    .ansi-bold { font-weight: bold; }
+    .ansi-dim { opacity: 0.6; }
+    .ansi-italic { font-style: italic; }
+    .ansi-underline { text-decoration: underline; }
+    .ansi-blink { animation: blink 1s linear infinite; }
+    .ansi-reverse { 
+        background-color: #d4d4d4; 
+        color: #1e1e1e; 
+    }
+    .ansi-hidden { opacity: 0; }
+    .ansi-strikethrough { text-decoration: line-through; }
+    
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}{{ device.name }}{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+        <i class="fas fa-cogs text-white text-2xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xFormation</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Device Emulation Management</p>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+        <div class="p-3 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl shadow-lg">
+            <i class="fas fa-microchip text-white text-2xl"></i>
+        </div>
+        <div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{{ device.name }}</h1>
+            <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ device.firmware.model.manufacturer.name }} {{ device.firmware.model.model_number }} v{{ device.firmware.version }}</p>
+        </div>
+    </div>
+    <div class="flex space-x-3">
+        <a href="{% url 'xformation:index' %}" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-all duration-200 flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+        {% if device.can_run %}
+        <button onclick="toggleStartInstanceForm()" class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-play mr-2"></i>Start Instance
+        </button>
+        {% endif %}
+        {% if device.has_rootfs %}
+        <a href="{% url 'xformation:device_initialize' device.id %}" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:scale-105 {% if device.initialization_status == 'initializing' %}opacity-50 cursor-not-allowed{% endif %}">
+                <i class="fas fa-{% if device.initialization_status == 'not_initialized' %}cog{% else %}redo{% endif %} mr-2 {% if device.initialization_status == 'initializing' %}animate-spin{% endif %}"></i>
+                {% if device.initialization_status == 'not_initialized' %}Initialize{% else %}Re-initialize{% endif %}
+        </a>
+        {% endif %}
+        {% if device.initialization_status == 'initialized' %}
+        <a href="{% url 'xformation:config_editor' device.id %}?reconfigure=true"
+           class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-edit mr-2"></i>Edit Config
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="bg-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-100 border-l-4 border-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-500 text-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-700 p-4 mb-6 rounded-md shadow-sm">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Initialization Status Alert -->
+    {% if device.initialization_status == 'initializing' %}
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-6 mb-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-sync-alt text-white animate-spin"></i>
+                </div>
+            </div>
+            <div class="ml-4 flex-1">
+                <h4 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200">Initialization in Progress</h4>
+                <p class="text-yellow-700 dark:text-yellow-300 mt-1">This device is currently being initialized. This process may take several minutes.</p>
+                <div class="mt-4">
+                    <div class="w-full bg-yellow-200 dark:bg-yellow-800 rounded-full h-3">
+                        <div class="bg-yellow-500 h-3 rounded-full animate-pulse" style="width: 75%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif device.initialization_status == 'init_failed' %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-6 mb-6">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-white"></i>
+                </div>
+            </div>
+            <div class="ml-4 flex-1">
+                <h4 class="text-lg font-semibold text-red-800 dark:text-red-200">Initialization Failed</h4>
+                <p class="text-red-700 dark:text-red-300 mt-1">The last initialization attempt failed. You can retry using the Re-initialize button above.</p>
+                {% if device.initialization_log %}
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-red-600 dark:text-red-400 font-medium hover:text-red-800 dark:hover:text-red-200">
+                        <i class="fas fa-chevron-right mr-1"></i>View Error Log
+                    </summary>
+                    <div class="mt-3 ansi-log" style="max-height: 200px;">
+                        {{ device.initialization_log|safe }}
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Device Information -->
+        <div class="info-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden info-card-light dark:info-card-dark">
+            <div class="bg-gradient-to-r from-purple-500 to-indigo-600 p-6">
+                <h3 class="text-xl font-bold text-white flex items-center">
+                    <div class="p-2 bg-white/20 rounded-lg mr-3">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    Device Information
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Status</span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {% if device.initialization_status == 'initialized' %}status-indicator success bg-green-100 text-green-800{% elif device.initialization_status == 'initializing' %}bg-yellow-100 text-yellow-800{% elif device.initialization_status == 'init_failed' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ device.get_initialization_status_display }}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Manufacturer</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ device.firmware.model.manufacturer.name }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Model</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ device.firmware.model.model_number }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Version</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ device.firmware.version }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Device Type</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ device.firmware.model.device_type.name }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Running Instances</span>
+                        <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                            {{ device.running_instances_count }}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Created</span>
+                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ device.created_at|date:"Y-m-d H:i:s" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Status -->
+        <div class="info-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden info-card-light dark:info-card-dark">
+            <div class="bg-gradient-to-r from-blue-500 to-cyan-600 p-6">
+                <h3 class="text-xl font-bold text-white flex items-center">
+                    <div class="p-2 bg-white/20 rounded-lg mr-3">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    Project Status
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Project Path</span>
+                        <div class="flex items-center">
+                            {% if project_status.project_exists %}
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <code class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">{{ project_status.project_path }}</code>
+                            {% else %}
+                                <i class="fas fa-times-circle text-red-500 mr-2"></i>
+                                <span class="text-sm text-red-600 dark:text-red-400">Not created</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Config File</span>
+                        <div class="flex items-center">
+                            {% if project_status.config_exists %}
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <code class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">config.yaml</code>
+                            {% else %}
+                                <i class="fas fa-times-circle text-red-500 mr-2"></i>
+                                <span class="text-sm text-red-600 dark:text-red-400">Missing</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Base Directory</span>
+                        <div class="flex items-center">
+                            {% if project_status.base_dir_exists %}
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <span class="text-sm text-green-600 dark:text-green-400">Analysis complete</span>
+                            {% else %}
+                                <i class="fas fa-times-circle text-red-500 mr-2"></i>
+                                <span class="text-sm text-red-600 dark:text-red-400">Missing</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">Rootfs Path</span>
+                        <code class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded w-full overflow-x-auto whitespace-normal break-all">{{ display_rootfs_path }}</code>
+                    </div>
+                </div>
+                
+                {% if not project_status.project_exists and device.initialization_status != 'initializing' %}
+                <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <form method="post" action="{% url 'xformation:device_detail' device.id %}" class="w-full">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="initialize">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-all duration-200 transform hover:scale-105">
+                            <i class="fas fa-cog mr-2"></i>Initialize Device
+                        </button>
+                    </form>
+                </div>
+                {% elif device.initialization_status == 'initializing' %}
+                <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <div class="w-full inline-flex items-center justify-center px-4 py-2 bg-yellow-500 text-white font-medium rounded-lg opacity-75">
+                        <i class="fas fa-sync-alt mr-2 animate-spin"></i>Initializing...
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialization Log -->
+    {% if device.initialization_log %}
+    <div class="info-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8 info-card-light dark:info-card-dark">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-terminal"></i>
+                </div>
+                Initialization Log
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="bg-gray-900 rounded-xl overflow-hidden">
+                <div class="bg-gray-800 px-4 py-2 flex items-center">
+                    <div class="flex space-x-2">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <span class="ml-4 text-gray-300 text-sm">penguin init output</span>
+                </div>
+                <div class="ansi-log">{{ device.initialization_log|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Configuration Preview -->
+    {% if config %}
+    <div class="info-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8 info-card-light dark:info-card-dark">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-file-code"></i>
+                </div>
+                Configuration Preview
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden">
+                <pre class="p-4 text-sm font-mono overflow-x-auto max-h-96 overflow-y-auto text-gray-800 dark:text-gray-200">{{ config|pprint }}</pre>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Instance History -->
+    {% if instances %}
+    <div class="info-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden info-card-light dark:info-card-dark">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 p-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-history text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Instance History</h2>
+            </div>
+            <span class="px-3 py-1 bg-white/20 text-white text-sm rounded-lg">
+                {{ instances|length }} total
+            </span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Instance Name</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Started</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Resources</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for instance in instances %}
+                    <tr class="instance-table-row">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-8 w-8">
+                                    <div class="h-8 w-8 bg-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% elif instance.status == 'stopped' %}gray{% else %}yellow{% endif %}-100 dark:bg-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% elif instance.status == 'stopped' %}gray{% else %}yellow{% endif %}-900 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-{% if instance.status == 'running' %}play{% elif instance.status == 'failed' %}exclamation-triangle{% elif instance.status == 'stopped' %}stop{% else %}clock{% endif %} text-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% elif instance.status == 'stopped' %}gray{% else %}yellow{% endif %}-600 dark:text-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% elif instance.status == 'stopped' %}gray{% else %}yellow{% endif %}-300 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                        <a href="{% url 'xformation:instance_detail' instance.id %}" class="hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ instance.instance_name }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-{% if instance.status == 'running' %}green-100 text-green-800{% elif instance.status == 'failed' %}red-100 text-red-800{% elif instance.status == 'stopped' %}gray-100 text-gray-800{% else %}yellow-100 text-yellow-800{% endif %}">
+                                {{ instance.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                            {{ instance.started_at|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">
+                            {% if instance.stopped_at %}
+                                {{ instance.stopped_at|timesince:instance.started_at }}
+                            {% elif instance.status == 'running' %}
+                                <span class="uptime" data-started="{{ instance.started_at.isoformat }}">
+                                    {{ instance.uptime_seconds|floatformat:0 }}s
+                                </span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                <div>CPU: {{ instance.cpu_limit }}</div>
+                                <div>Memory: {{ instance.memory_limit }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <a href="{% url 'xformation:instance_detail' instance.id %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200" title="View details">
+                                    <i class="fas fa-eye text-lg"></i>
+                                </a>
+                                {% if instance.status == 'running' %}
+                                <a href="{% url 'xformation:instance_detail' instance.id %}" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200" title="View instance">
+                                    <i class="fas fa-stop-circle text-lg"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Start Instance Modal -->
+{% if device.can_run %}
+<div id="startInstanceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-2xl bg-white dark:bg-gray-800">
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-t-2xl">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-play-circle"></i>
+                </div>
+                Start Emulation Instance
+            </h3>
+            <p class="text-green-100 mt-2">Configure and launch your device emulation</p>
+        </div>
+        
+        <form method="post" action="{% url 'xformation:device_detail' device.id %}" class="p-8">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start_instance">
+            
+            <!-- Instance Name -->
+            <div class="mb-6">
+                <label for="instance_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Instance Name
+                </label>
+                <input type="text" 
+                       id="instance_name" 
+                       name="instance_name" 
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                       placeholder="{{ device.name }}_instance">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <i class="fas fa-info-circle mr-1 text-blue-500"></i>
+                    Give your instance a unique name for identification
+                </p>
+            </div>
+            
+            <!-- Resource Configuration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- CPU Limit -->
+                <div>
+                    <label for="cpu_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        CPU Cores
+                    </label>
+                    <input type="number" 
+                           id="cpu_limit" 
+                           name="cpu_limit" 
+                           value="2.0" 
+                           min="0.5" 
+                           max="8" 
+                           step="0.5"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <span>Min: 0.5</span>
+                        <span>Max: 8.0</span>
+                    </div>
+                </div>
+                
+                <!-- Memory Limit -->
+                <div>
+                    <label for="memory_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Memory
+                    </label>
+                    <select id="memory_limit" 
+                            name="memory_limit"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="512m">512 MB</option>
+                        <option value="1g" selected>1 GB</option>
+                        <option value="2g">2 GB</option>
+                        <option value="4g">4 GB</option>
+                        <option value="8g">8 GB</option>
+                    </select>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Recommended: 1-2 GB</p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200 dark:border-gray-600">
+                <button type="button" onclick="toggleStartInstanceForm()" class="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-xl transition-all duration-200">
+                    Cancel
+                </button>
+                <button type="submit" class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 focus:ring-4 focus:ring-green-200 dark:focus:ring-green-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                    <i class="fas fa-rocket mr-2"></i>Launch Instance
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Handle dark mode class switching for info cards
+function updateInfoCardClasses() {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const infoCards = document.querySelectorAll('.info-card');
+    
+    infoCards.forEach(card => {
+        if (isDarkMode) {
+            card.classList.remove('info-card-light');
+            card.classList.add('info-card-dark');
+        } else {
+            card.classList.remove('info-card-dark');
+            card.classList.add('info-card-light');
+        }
+    });
+}
+
+// Update uptime counters
+function updateUptimes() {
+    document.querySelectorAll('.uptime').forEach(element => {
+        const startTime = new Date(element.dataset.started);
+        const now = new Date();
+        const uptimeSeconds = Math.floor((now - startTime) / 1000);
+        
+        const hours = Math.floor(uptimeSeconds / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        const seconds = uptimeSeconds % 60;
+        
+        if (hours > 0) {
+            element.textContent = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            element.textContent = `${minutes}m ${seconds}s`;
+        } else {
+            element.textContent = `${seconds}s`;
+        }
+    });
+}
+
+// Watch for dark mode changes
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            updateInfoCardClasses();
+        }
+    });
+});
+
+// Start observing
+observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+});
+
+// Initial setup
+document.addEventListener('DOMContentLoaded', function() {
+    updateInfoCardClasses();
+    updateUptimes();
+});
+
+// Update uptimes every second
+setInterval(updateUptimes, 1000);
+
+// Start instance modal functionality
+function toggleStartInstanceForm() {
+    const modal = document.getElementById('startInstanceModal');
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        // Generate unique instance name
+        const nameInput = document.getElementById('instance_name');
+        const baseName = "{{ device.name }}".replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        const timestamp = Math.floor(Date.now() / 1000);
+        nameInput.value = `${baseName}_instance_${timestamp}`;
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('startInstanceModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        toggleStartInstanceForm();
+    }
+});
+</script>
+
+{% if device.initialization_status == 'initializing' %}
+<script>
+// Auto-refresh page every 10 seconds during initialization
+setTimeout(() => {
+    location.reload();
+}, 10000);
+</script>
+{% endif %}
+{% endblock %}
+
+

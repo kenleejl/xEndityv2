@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Firmware - xQuire{% endblock %}
+
+{% block page_title %}Upload Firmware{% endblock %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg">
+        <i class="fas fa-download text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xQuire</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Firmware Download and Management Module</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- Progress Bar (Hidden by default) -->
+    <div id="uploadProgress" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
+            <h3 class="text-xl font-semibold text-white flex items-center">
+                <i class="fas fa-cloud-upload-alt mr-3"></i>
+                Uploading Firmware
+            </h3>
+        </div>
+        <div class="p-8">
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Progress</span>
+                    <span id="progressPercent" class="text-sm font-medium text-green-600 dark:text-green-400">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-700">
+                    <div id="progressBar" class="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                </div>
+                <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    <span id="uploadedSize">0 MB</span>
+                    <span id="uploadSpeed">0 KB/s</span>
+                    <span id="totalSize">0 MB</span>
+                </div>
+                <div id="progressMessage" class="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    Preparing upload...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upload Form -->
+    <div id="uploadForm" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
+            <h3 class="text-xl font-semibold text-white flex items-center">
+                <i class="fas fa-cloud-upload-alt mr-3"></i>
+                Firmware Upload Form
+            </h3>
+        </div>
+        <div class="p-8">
+            <form id="firmwareUploadForm" method="post" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Device Information -->
+                <div class="space-y-6">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">Device Information</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Manufacturer -->
+                        <div class="space-y-2">
+                            <label for="{{ form.manufacturer.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-industry mr-2 text-green-500"></i>Manufacturer
+                            </label>
+                            <select name="{{ form.manufacturer.name }}" id="{{ form.manufacturer.id_for_label }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" required>
+                                <option value="">Select Manufacturer</option>
+                                {% for choice in form.manufacturer.field.choices %}
+                                    {% if choice.0 %}
+                                        <option value="{{ choice.0 }}" {% if form.manufacturer.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.manufacturer.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.manufacturer.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Device Type -->
+                        <div class="space-y-2">
+                            <label for="{{ form.device_type.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-microchip mr-2 text-green-500"></i>Device Type
+                            </label>
+                            <select name="{{ form.device_type.name }}" id="{{ form.device_type.id_for_label }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" required>
+                                <option value="">Select Device Type</option>
+                                {% for choice in form.device_type.field.choices %}
+                                    {% if choice.0 %}
+                                        <option value="{{ choice.0 }}" {% if form.device_type.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.device_type.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.device_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Model Number -->
+                        <div class="space-y-2">
+                            <label for="{{ form.model_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-tag mr-2 text-green-500"></i>Model Number
+                            </label>
+                            <input type="text" name="{{ form.model_number.name }}" id="{{ form.model_number.id_for_label }}" value="{{ form.model_number.value|default:'' }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" placeholder="e.g., DIR-880L" required>
+                            {% if form.model_number.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.model_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Version -->
+                        <div class="space-y-2">
+                            <label for="{{ form.version.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-code-branch mr-2 text-green-500"></i>Version
+                            </label>
+                            <input type="text" name="{{ form.version.name }}" id="{{ form.version.id_for_label }}" value="{{ form.version.value|default:'' }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" placeholder="e.g., 1.04.B01" required>
+                            {% if form.version.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.version.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">Firmware File</h4>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.file.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-file-upload mr-2 text-green-500"></i>Select Firmware File
+                        </label>
+                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-green-400 dark:border-gray-600 dark:hover:border-green-500 transition-colors duration-200">
+                            <div class="space-y-1 text-center">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                                <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                    <label for="{{ form.file.id_for_label }}" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-green-500">
+                                        <span>Upload a file</span>
+                                        <input type="file" name="{{ form.file.name }}" id="{{ form.file.id_for_label }}" class="sr-only" accept=".bin,.img,.fw,.zip,.tar,.tar.gz,.gz" required>
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500">BIN, IMG, FW, ZIP, TAR files up to 100MB</p>
+                            </div>
+                        </div>
+                        {% if form.file.errors %}
+                            <div class="text-red-500 text-sm mt-1">{{ form.file.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="space-y-2">
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-sticky-note mr-2 text-green-500"></i>Notes (Optional)
+                    </label>
+                    <textarea name="{{ form.notes.name }}" id="{{ form.notes.id_for_label }}" rows="4" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200" placeholder="Add any additional information about this firmware...">{{ form.notes.value|default:'' }}</textarea>
+                    {% if form.notes.errors %}
+                        <div class="text-red-500 text-sm mt-1">{{ form.notes.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                            <span class="text-red-700 dark:text-red-200 text-sm">{{ form.non_field_errors.0 }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                    <button type="submit" id="uploadButton" class="flex-1 flex justify-center items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:from-green-600 hover:to-green-700 focus:ring-4 focus:ring-green-200 dark:focus:ring-green-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-upload mr-2"></i>
+                        Upload Firmware
+                    </button>
+                    <a href="{% url 'xquire:index' %}" class="flex-1 flex justify-center items-center px-6 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all duration-200">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Instructions & Guidelines -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-700 overflow-hidden">
+        <div class="px-6 py-4 bg-blue-500 dark:bg-blue-600">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-info-circle mr-3"></i>
+                Upload Guidelines
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Requirements -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>Requirements
+                    </h4>
+                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-blue-500 mr-2 mt-0.5"></i>
+                            <span>Select manufacturer and device type from dropdown lists</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-blue-500 mr-2 mt-0.5"></i>
+                            <span>Enter model number exactly as it appears on the device</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-blue-500 mr-2 mt-0.5"></i>
+                            <span>Version number should follow manufacturer's format</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-blue-500 mr-2 mt-0.5"></i>
+                            <span>Add descriptive notes to help identify the firmware</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Technical Details -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-cog text-orange-500 mr-2"></i>Technical Details
+                    </h4>
+                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-file text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Supported: <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">.bin, .img, .fw, .zip, .tar, .tar.gz</code></span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-weight text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Maximum file size: <strong>100MB</strong></span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-shield-alt text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Files are automatically scanned for security</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-fingerprint text-orange-500 mr-2 mt-0.5"></i>
+                            <span>SHA256 and MD5 hashes are generated automatically</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Admin Note -->
+            <div class="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mr-3 mt-0.5"></i>
+                    <div class="text-sm">
+                        <p class="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Missing Manufacturer or Device Type?</p>
+                        <p class="text-yellow-700 dark:text-yellow-300">If the manufacturer or device type is not in the dropdown lists, please contact an administrator to add them to the system first.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Upload progress and drag & drop functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.querySelector('.border-dashed');
+    const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+    const form = document.getElementById('firmwareUploadForm');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const uploadedSize = document.getElementById('uploadedSize');
+    const uploadSpeed = document.getElementById('uploadSpeed');
+    const totalSize = document.getElementById('totalSize');
+    const progressMessage = document.getElementById('progressMessage');
+    const uploadButton = document.getElementById('uploadButton');
+    
+    let startTime = null;
+    
+    // Format bytes to human readable format
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
+    // Calculate upload speed
+    function calculateSpeed(uploadedBytes, startTime) {
+        const elapsed = (Date.now() - startTime) / 1000; // seconds
+        const speed = uploadedBytes / elapsed; // bytes per second
+        return formatBytes(speed, 1) + '/s';
+    }
+    
+    // Drag and drop functionality
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('border-green-400', 'bg-green-50', 'dark:bg-green-900/20');
+        });
+        
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-green-400', 'bg-green-50', 'dark:bg-green-900/20');
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-green-400', 'bg-green-50', 'dark:bg-green-900/20');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileDisplay(files[0]);
+            }
+        });
+        
+        // Update UI when file is selected via click
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                updateFileDisplay(this.files[0]);
+            }
+        });
+        
+        function updateFileDisplay(file) {
+            const fileName = file.name;
+            const fileSize = formatBytes(file.size);
+            dropZone.querySelector('span').textContent = `${fileName} (${fileSize})`;
+        }
+    }
+    
+    // Form submission with progress tracking
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInputElement = document.getElementById('{{ form.file.id_for_label }}');
+            if (!fileInputElement.files.length) {
+                alert('Please select a file to upload.');
+                return;
+            }
+            
+            const file = fileInputElement.files[0];
+            startTime = Date.now();
+            
+            // Show progress bar and hide form
+            uploadForm.classList.add('hidden');
+            uploadProgress.classList.remove('hidden');
+            
+            // Scroll to progress bar
+            uploadProgress.scrollIntoView({ behavior: 'smooth' });
+            
+            // Update total size
+            totalSize.textContent = formatBytes(file.size);
+            
+            // Create FormData
+            const formData = new FormData(form);
+            
+            // Create XMLHttpRequest for progress tracking
+            const xhr = new XMLHttpRequest();
+            
+            // Upload progress handler
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    const uploadedBytes = e.loaded;
+                    
+                    // Update progress bar
+                    progressBar.style.width = percentComplete + '%';
+                    progressPercent.textContent = Math.round(percentComplete) + '%';
+                    
+                    // Update uploaded size
+                    uploadedSize.textContent = formatBytes(uploadedBytes);
+                    
+                    // Update upload speed
+                    if (startTime) {
+                        uploadSpeed.textContent = calculateSpeed(uploadedBytes, startTime);
+                    }
+                    
+                    // Update progress message
+                    if (percentComplete < 100) {
+                        progressMessage.textContent = 'Uploading firmware file...';
+                    } else {
+                        progressMessage.textContent = 'Processing uploaded file...';
+                        uploadSpeed.textContent = 'Processing...';
+                    }
+                }
+            });
+            
+            // Upload completion handler
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    progressMessage.textContent = 'Upload completed successfully! Redirecting...';
+                    progressBar.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    
+                    // Try to parse response and redirect
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.redirect_url) {
+                            setTimeout(() => {
+                                window.location.href = response.redirect_url;
+                            }, 1500);
+                        } else {
+                            // Fallback: reload the page or redirect to index
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        }
+                    } catch (e) {
+                        // If response is not JSON (normal Django form response), reload
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    }
+                } else {
+                    progressMessage.textContent = 'Upload failed. Please try again.';
+                    progressBar.classList.add('bg-red-500');
+                    setTimeout(() => {
+                        uploadForm.classList.remove('hidden');
+                        uploadProgress.classList.add('hidden');
+                        progressBar.classList.remove('bg-red-500');
+                        progressBar.style.width = '0%';
+                    }, 3000);
+                }
+            });
+            
+            // Upload error handler
+            xhr.addEventListener('error', function() {
+                progressMessage.textContent = 'Upload error occurred. Please try again.';
+                progressBar.classList.add('bg-red-500');
+                setTimeout(() => {
+                    uploadForm.classList.remove('hidden');
+                    uploadProgress.classList.add('hidden');
+                    progressBar.classList.remove('bg-red-500');
+                    progressBar.style.width = '0%';
+                }, 3000);
+            });
+            
+            // Send the request
+            xhr.open('POST', form.action);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.send(formData);
+        });
+    }
+});
+</script>
+{% endblock %} 

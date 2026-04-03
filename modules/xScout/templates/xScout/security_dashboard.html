@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}xEndity - Security Dashboard{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+{% block extra_head %}
+<style>
+    .security-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .security-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    .severity-critical {
+        background-color: #FEE2E2;
+        color: #991B1B;
+    }
+    .severity-high {
+        background-color: #FED7AA;
+        color: #9A3412;
+    }
+    .severity-medium {
+        background-color: #FEF3C7;
+        color: #92400E;
+    }
+    .severity-low {
+        background-color: #D1FAE5;
+        color: #065F46;
+    }
+    .stat-card {
+        transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .risk-meter {
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .risk-high { background-color: #EF4444; }
+    .risk-medium { background-color: #F59E0B; }
+    .risk-low { background-color: #10B981; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} bg-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-100 border-l-4 border-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-500 text-{% if message.tags == 'error' %}red{% elif message.tags == 'success' %}green{% elif message.tags == 'warning' %}yellow{% else %}blue{% endif %}-700 p-4 mb-4 rounded-md shadow-sm">
+            <div class="flex items-center">
+                <i class="fas fa-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} mr-2"></i>
+                <p>{{ message }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-shield-alt text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Security Dashboard</h1>
+                    <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">Overview of firmware security analysis</p>
+                </div>
+            </div>
+            {% if has_analyses %}
+            <div class="text-right">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Average Risk Score</p>
+                <p class="text-3xl font-bold 
+                    {% if stats.avg_risk_score > 7 %}text-red-600 dark:text-red-400
+                    {% elif stats.avg_risk_score > 4 %}text-yellow-600 dark:text-yellow-400
+                    {% else %}text-green-600 dark:text-green-400{% endif %}">
+                    {{ stats.avg_risk_score }}/10
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm">
+        <div class="flex">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <p>Error loading dashboard: {{ error }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Security Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="stat-card bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <i class="fas fa-microchip text-blue-600 dark:text-blue-400 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Firmwares</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_firmwares|default:0 }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <i class="fas fa-list text-green-600 dark:text-green-400 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Packages</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_packages|default:0 }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                    <i class="fas fa-bug text-red-600 dark:text-red-400 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Vulnerabilities</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_vulnerabilities|default:0 }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-purple-600 dark:text-purple-400 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Critical Issues</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.critical_vulnerabilities|default:0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Distribution -->
+    {% if has_analyses %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Risk Distribution</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ stats.high_risk_firmwares }}</div>
+                <div class="text-sm text-red-600 dark:text-red-400">High Risk (>70)</div>
+                <div class="risk-meter bg-gray-200 dark:bg-gray-700 mt-2">
+                    <div class="risk-high h-full" style="width: {{ stats.risk_percentages.high_risk_percentage }}%"></div>
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ stats.risk_percentages.high_risk_percentage }}%</div>
+            </div>
+            <div class="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ stats.medium_risk_firmwares }}</div>
+                <div class="text-sm text-yellow-600 dark:text-yellow-400">Medium Risk (30-70)</div>
+                <div class="risk-meter bg-gray-200 dark:bg-gray-700 mt-2">
+                    <div class="risk-medium h-full" style="width: {{ stats.risk_percentages.medium_risk_percentage }}%"></div>
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ stats.risk_percentages.medium_risk_percentage }}%</div>
+            </div>
+            <div class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats.low_risk_firmwares }}</div>
+                <div class="text-sm text-green-600 dark:text-green-400">Low Risk (<30)</div>
+                <div class="risk-meter bg-gray-200 dark:bg-gray-700 mt-2">
+                    <div class="risk-low h-full" style="width: {{ stats.risk_percentages.low_risk_percentage }}%"></div>
+                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ stats.risk_percentages.low_risk_percentage }}%</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Security Analysis Results -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-white">Recent Security Analysis Results</h2>
+                {% if has_analyses %}
+                <span class="bg-white/20 text-white px-3 py-1 rounded-full text-sm">
+                    {{ stats.total_firmwares }} Total
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="p-6">
+            {% if security_analyses %}
+                <div class="grid gap-6">
+                    {% for analysis in security_analyses %}
+                    <div class="security-card bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {{ analysis.firmware_info.manufacturer|default:"Unknown" }} {{ analysis.firmware_info.model|default:"Unknown" }}
+                                </h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Version: {{ analysis.firmware_info.version|default:"Unknown" }} | 
+                                    Analyzed: {{ analysis.analysis_date|date:"M d, Y" }}
+                                </p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <a href="{% url 'xscout:security_analysis_detail' analysis.firmware_id %}" 
+                                   class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition-colors">
+                                    View Details
+                                </a>
+                                <a href="{% url 'xscout:sbom_viewer' analysis.firmware_id %}" 
+                                   class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md transition-colors">
+                                    SBOM
+                                </a>
+                                <a href="{% url 'xscout:vulnerability_viewer' analysis.firmware_id %}" 
+                                   class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-md transition-colors">
+                                    Vulnerabilities
+                                </a>
+                                <button data-firmware-id="{{ analysis.firmware_id }}" data-firmware-name="{{ analysis.firmware_info.manufacturer|default:"Unknown" }} {{ analysis.firmware_info.model|default:"Unknown" }}" onclick="confirmDelete(this.dataset.firmwareId, this.dataset.firmwareName)" 
+                                        class="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded-md transition-colors">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                <div class="text-lg font-bold text-gray-900 dark:text-white">{{ analysis.get_total_packages }}</div>
+                                <div class="text-xs text-gray-600 dark:text-gray-400">Packages</div>
+                            </div>
+                            <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                <div class="text-lg font-bold text-red-700 dark:text-red-300">{{ analysis.get_critical_vulnerabilities }}</div>
+                                <div class="text-xs text-red-600 dark:text-red-400">Critical</div>
+                            </div>
+                            <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                                <div class="text-lg font-bold text-orange-700 dark:text-orange-300">{{ analysis.get_high_vulnerabilities }}</div>
+                                <div class="text-xs text-orange-600 dark:text-orange-400">High</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 dark:bg-gray-600 rounded-lg">
+                                <div class="text-lg font-bold text-gray-900 dark:text-white">{{ analysis.get_total_vulnerabilities }}</div>
+                                <div class="text-xs text-gray-600 dark:text-gray-400">Total Vulns</div>
+                            </div>
+                            {% if analysis.risk_score %}
+                            <div class="text-center p-3 rounded-lg
+                                {% if analysis.risk_score > 70 %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
+                                {% elif analysis.risk_score > 30 %}bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800
+                                {% else %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800{% endif %}">
+                                <div class="text-lg font-bold 
+                                    {% if analysis.risk_score > 70 %}text-red-700 dark:text-red-300
+                                    {% elif analysis.risk_score > 30 %}text-yellow-700 dark:text-yellow-300
+                                    {% else %}text-green-700 dark:text-green-300{% endif %}">
+                                    {{ analysis.risk_score|floatformat:1 }}
+                                </div>
+                                <div class="text-xs 
+                                    {% if analysis.risk_score > 70 %}text-red-600 dark:text-red-400
+                                    {% elif analysis.risk_score > 30 %}text-yellow-600 dark:text-yellow-400
+                                    {% else %}text-green-600 dark:text-green-400{% endif %}">
+                                    Risk Score
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if stats.total_firmwares > 20 %}
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600 dark:text-gray-400">
+                        Showing 20 of {{ stats.total_firmwares }} total analyses
+                    </p>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-shield-alt text-gray-400 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Security Analyses Yet</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">Start by extracting and analyzing firmware to see security results here.</p>
+                    <a href="{% url 'xscout:index' %}" 
+                       class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg shadow-sm transition-colors">
+                        <i class="fas fa-rocket mr-2"></i>
+                        Start Analysis
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mt-4">Delete Security Analysis</h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Are you sure you want to delete the security analysis for <strong id="firmwareName"></strong>?
+                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    This action cannot be undone. All SBOM data, vulnerability information, and risk assessments will be permanently removed.
+                </p>
+            </div>
+            <div class="items-center px-4 py-3">
+                <form id="deleteForm" method="post" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-auto mr-2 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors">
+                        <i class="fas fa-trash mr-1"></i>Delete
+                    </button>
+                </form>
+                <button onclick="closeDeleteModal()" 
+                        class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white text-base font-medium rounded-md w-auto hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(firmwareId, firmwareName) {
+    // Set the firmware name in the modal
+    document.getElementById('firmwareName').textContent = firmwareName;
+    
+    // Set the form action URL
+    const deleteForm = document.getElementById('deleteForm');
+    deleteForm.action = "{% url 'xscout:delete_security_analysis' 0 %}".replace('0', firmwareId);
+    
+    // Show the modal
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDeleteModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+</script>
+{% endblock %} 

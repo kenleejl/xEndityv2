@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+{% load xscout_filters %}
+
+{% block title %}{{ title }} - xScout{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        <a href="{% url 'xscout:index' %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            xScout
+        </a>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">{{ title }}</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-3">
+            <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                <i class="fas fa-list-alt text-white text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{{ title }}</h1>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Analyses -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">Total Analyses</h3>
+                        <p class="text-3xl font-bold text-white mt-2">{{ total_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <i class="fas fa-search text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Completed -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">Completed</h3>
+                        <p class="text-3xl font-bold text-white mt-2">{{ completed_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <i class="fas fa-check-circle text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Running -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">Running</h3>
+                        <p class="text-3xl font-bold text-white mt-2">{{ running_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <i class="fas fa-spinner text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Failed -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">Failed</h3>
+                        <p class="text-3xl font-bold text-white mt-2">{{ failed_count }}</p>
+                    </div>
+                    <div class="p-3 bg-white/20 rounded-xl">
+                        <i class="fas fa-times-circle text-white text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis List -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-list text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Firmware Analyses</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            {% if analyses %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Firmware
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Date
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Format
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Encryption Risk
+                            </th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for analysis in analyses %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-12 w-12">
+                                        <div class="h-12 w-12 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900 dark:to-emerald-900 rounded-xl flex items-center justify-center shadow-lg">
+                                            <i class="fas fa-microchip text-green-600 dark:text-green-300 text-lg"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        {% if analysis.firmware_id in firmware_map %}
+                                        {% with firmware=firmware_map|get_item:analysis.firmware_id %}
+                                        <div class="text-sm font-bold text-gray-900 dark:text-white">
+                                            {{ firmware.model.manufacturer.name }}
+                                        </div>
+                                        <div class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            {{ firmware.model.model_number }}
+                                        </div>
+                                        <div class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mt-1">
+                                            v{{ firmware.version }}
+                                        </div>
+                                        {% endwith %}
+                                        {% else %}
+                                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                            Unknown Firmware
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                {{ analysis.analysis_date|date:"M d, Y H:i" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if analysis.status == 'completed' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    Completed
+                                </span>
+                                {% elif analysis.status == 'failed' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    <i class="fas fa-times-circle mr-1"></i>
+                                    Failed
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>
+                                    {{ analysis.status }} ({{ analysis.progress }}%)
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                                <span class="max-w-xs truncate block">{{ analysis.file_format.raw_output|default:"Unknown"|truncatechars:30 }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if analysis.encryption.encryption_probability %}
+                                <div class="w-full">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Risk Level</span>
+                                        <span class="text-xs font-semibold text-gray-900 dark:text-white">
+                                            {{ analysis.encryption.encryption_confidence|multiply:100|floatformat:0 }}%
+                                        </span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="h-2 rounded-full {% if 'definitely_encrypted' in analysis.encryption.encryption_probability %}bg-red-500{% elif 'likely_encrypted' in analysis.encryption.encryption_probability %}bg-yellow-500{% else %}bg-green-500{% endif %}"
+                                             style="width: {{ analysis.encryption.encryption_confidence|multiply:100 }}%;"></div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Unknown</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex justify-end space-x-2">
+                                    {% if analysis.status == 'completed' %}
+                                    <a href="{% url 'xscout:analysis_results' analysis.id %}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors duration-200">
+                                        <i class="fas fa-chart-bar mr-1"></i>
+                                        Results
+                                    </a>
+                                    {% elif analysis.status == 'failed' %}
+                                    <a href="{% url 'xscout:analyze' %}?firmware_id={{ analysis.firmware_id }}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-medium rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200">
+                                        <i class="fas fa-redo mr-1"></i>
+                                        Retry
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'xscout:analyze' %}?firmware_id={{ analysis.firmware_id }}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors duration-200">
+                                        <i class="fas fa-spinner mr-1"></i>
+                                        View
+                                    </a>
+                                    {% endif %}
+                                    <button class="inline-flex items-center px-3 py-1.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-medium rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200 delete-analysis-btn" 
+                                            data-analysis-id="{{ analysis.id }}"
+                                            onclick="showDeleteModal('{{ analysis.id }}')">
+                                        <i class="fas fa-trash-alt mr-1"></i>
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <div class="mx-auto h-24 w-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-search text-gray-400 text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Firmware Analyses Found</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Get started by analyzing your first firmware file.</p>
+                <a href="{% url 'xscout:analyze' %}" 
+                   class="inline-flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <i class="fas fa-plus"></i>
+                    <span>Start Analysis</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if analyses %}
+        <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4">
+            <a href="{% url 'xscout:analyze' %}" 
+               class="inline-flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                <i class="fas fa-plus"></i>
+                <span>Start New Analysis</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Analysis Confirmation Modal -->
+<div class="fixed inset-0 bg-black/50 hidden z-50" id="deleteAnalysisModal">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white">Confirm Delete</h3>
+                    <button class="text-white hover:text-red-200 transition-colors duration-200" onclick="hideDeleteModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-700 dark:text-gray-300 mb-6">Are you sure you want to delete this analysis? This action cannot be undone.</p>
+                <div class="flex justify-end space-x-3">
+                    <button class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors duration-200" onclick="hideDeleteModal()">
+                        Cancel
+                    </button>
+                    <button class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200" id="confirmDeleteBtn">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentAnalysisId = null;
+
+    // Modal functions
+    function showDeleteModal(analysisId) {
+        currentAnalysisId = analysisId;
+        document.getElementById('deleteAnalysisModal').classList.remove('hidden');
+    }
+
+    function hideDeleteModal() {
+        currentAnalysisId = null;
+        document.getElementById('deleteAnalysisModal').classList.add('hidden');
+    }
+
+    // Initialize delete functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle the delete confirmation
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (!currentAnalysisId) {
+                console.error('No analysis ID found');
+                return;
+            }
+            
+            // Send delete request
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `/xscout/analyses/delete/${currentAnalysisId}/`, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        console.log('Delete response:', response);
+                        if (response.success) {
+                            // Close modal and reload page
+                            hideDeleteModal();
+                            window.location.reload();
+                        } else {
+                            console.error('Server returned error:', response.message);
+                            alert(`Error: ${response.message || 'Failed to delete analysis'}`);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                        alert('Error processing response');
+                    }
+                } else {
+                    console.error('Error response:', xhr.status, xhr.statusText);
+                    alert('Error deleting analysis');
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('Network error occurred');
+                alert('Network error occurred');
+            };
+            
+            xhr.send();
+        });
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,1280 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load xscout_filters %}
+
+{% block title %}xEndity - Components Analysis{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .result-card {
+        height: 100%;
+    }
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.5rem;
+        text-transform: uppercase;
+    }
+    .metadata-table th {
+        width: 150px;
+    }
+    .collapsible-section {
+        cursor: pointer;
+    }
+    .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+    .collapsible-content.open {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    .path-container {
+        word-break: break-all;
+        white-space: normal;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        width: 100%;
+    }
+    .artifact-path-box {
+        background-color: rgb(220 252 231);
+        color: rgb(22 101 52);
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.75rem;
+    }
+    .dark .artifact-path-box {
+        background-color: rgb(20 83 45);
+        color: rgb(187 247 208);
+    }
+    .found-files-container {
+        margin-top: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        <a href="{% url 'xscout:firmware_analysis' firmware.id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Analysis Overview
+        </a>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">Component Analysis</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-3 mb-4">
+            <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                <i class="fas fa-microscope text-white text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Component Analysis Results</h1>
+                {% if firmware %}
+                <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ firmware.model.manufacturer.name }} {{ firmware.model.model_number }} - {{ firmware.version }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if analysis_results %}
+        <!-- Action Buttons -->
+        <div class="flex justify-end mb-4 space-x-3">
+            <form id="rerun-analysis-form" action="{% url 'xscout:start_components_analysis' %}" method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="firmware_id" value="{{ firmware.id }}">
+                <button id="rerun-analysis-btn" type="submit" class="flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                    <i class="fas fa-sync mr-2"></i>
+                    <span>Re-run Component Analysis</span>
+                </button>
+            </form>
+            <a href="{% url 'xscout:firmware_analysis' firmware.id %}" 
+               class="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                <i class="fas fa-arrow-left mr-2"></i>
+                <span>Back to Analysis</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not analysis_results %}
+    <!-- Action Buttons when no results -->
+    <div class="flex justify-end mb-4 space-x-3">
+        {% if firmware %}
+        <form id="run-analysis-form" action="{% url 'xscout:start_components_analysis' %}" method="post" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="firmware_id" value="{{ firmware.id }}">
+            <button id="run-analysis-btn" type="submit" class="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                <i class="fas fa-play mr-2"></i>
+                <span>Run Component Analysis</span>
+            </button>
+        </form>
+        {% endif %}
+        {% if firmware %}
+        <a href="{% url 'xscout:firmware_analysis' firmware.id %}" 
+           class="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+            <i class="fas fa-arrow-left mr-2"></i>
+            <span>Back to Analysis</span>
+        </a>
+        {% endif %}
+    </div>
+    
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow-sm">
+        <p>No component analysis results available. Run the analysis to identify firmware components.</p>
+    </div>
+    {% endif %}
+
+    {% if analysis_results %}
+    
+    <!-- Artifacts Section -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-puzzle-piece text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Identified Artifacts</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Rootfs -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Root Filesystem</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.artifacts.standardized_paths.rootfs %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Root Filesystem Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.rootfs.0|relative_path }}
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Standardized Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.standardized_paths.rootfs|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif analysis_results.artifacts.rootfs %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Root Filesystem Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.rootfs.0|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="text-gray-500 dark:text-gray-400">No rootfs identified</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Kernel -->
+                {% if analysis_results.artifacts.standardized_paths.kernel or analysis_results.artifacts.kernel %}
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Kernel Binary</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.artifacts.standardized_paths.kernel %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Kernel Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for kernel in analysis_results.artifacts.kernel %}
+                                            {{ kernel|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Standardized Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.standardized_paths.kernel|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Kernel Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for kernel in analysis_results.artifacts.kernel %}
+                                            {{ kernel|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <!-- DTB -->
+                {% if analysis_results.artifacts.standardized_paths.dtb or analysis_results.artifacts.dtb %}
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Device Tree Blobs (DTB)</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.artifacts.standardized_paths.dtb %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found DTB Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for dtb in analysis_results.artifacts.dtb %}
+                                            {{ dtb|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Standardized Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.standardized_paths.dtb|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found DTB Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for dtb in analysis_results.artifacts.dtb %}
+                                            {{ dtb|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Initramfs -->
+                {% if analysis_results.artifacts.standardized_paths.initramfs or analysis_results.artifacts.initramfs %}
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-red-500 to-red-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Initramfs / Initrd</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.artifacts.standardized_paths.initramfs %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Initramfs Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for initramfs in analysis_results.artifacts.initramfs %}
+                                            {{ initramfs|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Standardized Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.standardized_paths.initramfs|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Initramfs Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for initramfs in analysis_results.artifacts.initramfs %}
+                                            {{ initramfs|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <!-- Bootloader -->
+                {% if analysis_results.artifacts.standardized_paths.bootloader or analysis_results.artifacts.bootloader %}
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Bootloader</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.artifacts.standardized_paths.bootloader %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Bootloader Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for bootloader in analysis_results.artifacts.bootloader %}
+                                            {{ bootloader|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Standardized Path:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {{ analysis_results.artifacts.standardized_paths.bootloader|relative_path }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="artifact-path-box">
+                                <div>
+                                    <strong>Found Bootloader Files:</strong>
+                                    <div class="mt-1 text-xs path-container bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded">
+                                        {% for bootloader in analysis_results.artifacts.bootloader %}
+                                            {{ bootloader|relative_path }}<br>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Additional Artifacts - Hidden since it's just a placeholder -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Kernel Info Section  -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-cyan-500 to-blue-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-microchip text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Kernel Information</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Kernel Information -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Kernel Information</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Kernel Version -->
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3">
+                            <h3 class="font-bold text-white">Kernel Version</h3>
+                        </div>
+                        <div class="p-4">
+                            {% if analysis_results.best_kernel_version %}
+                                <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded-md text-center">
+                                    <span class="text-lg font-semibold">{{ analysis_results.best_kernel_version }}</span>
+                                </div>
+                                
+                                {% if analysis_results.kernel_version %}
+                                    <div class="mt-4">
+                                        {% for source, versions in analysis_results.kernel_version.items %}
+                                            <div class="mb-3">
+                                                <div class="flex justify-between items-center collapsible-section" data-target="kernel-version-{{ forloop.counter }}">
+                                                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ source|replace_underscores }}</h4>
+                                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                                </div>
+                                                <div id="kernel-version-{{ forloop.counter }}" class="collapsible-content mt-2">
+                                                    <ul class="space-y-1 text-sm">
+                                                        {% for version_info in versions %}
+                                                            <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                                <div class="font-medium text-gray-800 dark:text-gray-200 mb-1">Source: </div>
+                                                                    <div class="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded-md overflow-auto max-h-28">
+                                                                        <pre class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ version_info.details|rootfs_path }}</pre>
+                                                                    </div>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-gray-500 dark:text-gray-400">No kernel version detected</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Preemption Model -->
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-3">
+                            <h3 class="font-bold text-white">Preemption Model</h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 p-3 rounded-md text-center">
+                                <span class="text-lg font-semibold">
+                                    {% if analysis_results.best_preemption_model %}
+                                        {{ analysis_results.best_preemption_model }}
+                                    {% else %}
+                                        Could not determine preemption model
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% if analysis_results.kernel_preemption.sources.modinfo %}
+                                <div class="mt-4">
+                                    <div class="flex justify-between items-center collapsible-section" data-target="preemption-vermagic">
+                                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Modinfo Vermagic</h4>
+                                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                    </div>
+                                    <div id="preemption-vermagic" class="collapsible-content mt-2">
+                                        <ul class="space-y-1 text-sm">
+                                            {% for source in analysis_results.kernel_preemption.sources.modinfo %}
+                                                {% if source.vermagic %}
+                                                    <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                        <div class="p-2 bg-gray-100 dark:bg-gray-800 rounded-md overflow-auto max-h-28">
+                                                            <pre class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">vermagic: {{ source.vermagic }}</pre>
+                                                        </div>
+                                                    </li>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                    <!-- Boot Parameters -->
+                    {% if analysis_results.boot_parameters %}
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-3">
+                            <h3 class="font-bold text-white">Boot Parameters</h3>
+                        </div>
+                        <div class="p-4">
+                            {% for param_type, values in analysis_results.boot_parameters.items %}
+                                <div class="mb-3">
+                                    <div class="flex justify-between items-center collapsible-section" data-target="boot-params-{{ forloop.counter }}">
+                                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ param_type|replace_underscores }}</h4>
+                                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                    </div>
+                                    <div id="boot-params-{{ forloop.counter }}" class="collapsible-content mt-2">
+                                        <ul class="space-y-1 text-sm">
+                                            {% for param in values %}
+                                                <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                    <span class="text-gray-800 dark:text-gray-200 break-all text-xs">{{ param }}</span>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Kernel Config -->
+                    {% if analysis_results.kernel_config_file %}
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 px-4 py-3">
+                            <h3 class="font-bold text-white">Kernel Config</h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded-md text-center">
+                                <span class="font-semibold">Config extracted to:</span>
+                                <span class="break-all">{{ analysis_results.kernel_config_file|relative_path }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Kernel Modules -->
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-3">
+                            <h3 class="font-bold text-white">Kernel Modules</h3>
+                        </div>
+                        <div class="p-4">
+                            {% if analysis_results.kernel_modules %}
+                                {% with modules=analysis_results.kernel_modules %}
+                                    <div class="flex justify-between mb-4">
+                                        <span class="text-gray-700 dark:text-gray-300">Total modules:</span>
+                                        <span class="font-semibold text-gray-900 dark:text-white">{{ modules.module_count|default:"0" }}</span>
+                                    </div>
+                                    
+                                    {% if modules.module_types %}
+                                        {% for type, count in modules.module_types.items %}
+                                            <div class="mb-3">
+                                                <div class="flex justify-between items-center collapsible-section" data-target="module-type-{{ forloop.counter }}">
+                                                    <div class="flex justify-between w-full">
+                                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                            {% if type == 'ko' %}
+                                                                .ko modules
+                                                            {% elif type == 'o' %}
+                                                                .o modules
+                                                            {% else %}
+                                                                {{ type }} modules
+                                                            {% endif %}
+                                                        </span>
+                                                        <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full">{{ count }}</span>
+                                                    </div>
+                                                    <i class="fas fa-chevron-down text-gray-400 text-xs ml-2"></i>
+                                                </div>
+                                                <div id="module-type-{{ forloop.counter }}" class="collapsible-content mt-2">
+                                                    {% if type == 'ko' and modules.ko_modules %}
+                                                        {% if analysis_results.best_kernel_version and analysis_results.best_kernel_version in modules.ko_modules.0|rootfs_path %}
+                                                            <div class="p-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-md">
+                                                                <code class="text-sm">/lib/modules/{{ analysis_results.best_kernel_version }}</code>
+                                                            </div>
+                                                        {% else %}
+                                                        <div class="max-h-60 overflow-y-auto">
+                                                            <ul class="space-y-1 text-sm">
+                                                                {% for module in modules.ko_modules %}
+                                                                    <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                                        <span class="text-gray-800 dark:text-gray-200 break-all text-xs">{{ module|rootfs_path }}</span>
+                                                                    </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% elif type == 'o' and modules.o_modules %}
+                                                        {% if analysis_results.best_kernel_version and analysis_results.best_kernel_version in modules.o_modules.0|rootfs_path %}
+                                                            <div class="p-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-md">
+                                                                <code class="text-sm">/lib/modules/{{ analysis_results.best_kernel_version }}</code>
+                                                            </div>
+                                                        {% else %}
+                                                        <div class="max-h-60 overflow-y-auto">
+                                                            <ul class="space-y-1 text-sm">
+                                                                {% for module in modules.o_modules %}
+                                                                    <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                                        <span class="text-gray-800 dark:text-gray-200 break-all text-xs">{{ module|rootfs_path }}</span>
+                                                                    </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <p class="text-gray-500 dark:text-gray-400">No kernel modules found</p>
+                            {% endif %}
+                        </div>
+                                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architecture Information Section -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-amber-500 to-amber-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-microchip text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Architecture Information</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Architecture -->
+                <div class="bg-blue-600 dark:bg-blue-800 rounded-lg overflow-hidden">
+                    <div class="p-3 bg-opacity-90 text-white">
+                        <h3 class="text-sm font-semibold mb-2">Architecture</h3>
+                        {% if analysis_results.architecture %}
+                            <div class="bg-blue-700 dark:bg-blue-900 rounded-md p-2 text-center">
+                                <span class="text-lg font-semibold">{{ analysis_results.architecture|join:", " }}</span>
+                            </div>
+                        {% else %}
+                            <div class="bg-blue-700 dark:bg-blue-900 rounded-md p-2 text-center">
+                                <span class="text-sm">Not detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Endianness -->
+                <div class="bg-green-600 dark:bg-green-800 rounded-lg overflow-hidden">
+                    <div class="p-3 bg-opacity-90 text-white">
+                        <h3 class="text-sm font-semibold mb-2">Endianness</h3>
+                        {% if analysis_results.endianness %}
+                            <div class="bg-green-700 dark:bg-green-900 rounded-md p-2 text-center">
+                                <span class="text-lg font-semibold">{{ analysis_results.endianness|join:", " }}</span>
+                            </div>
+                        {% else %}
+                            <div class="bg-green-700 dark:bg-green-900 rounded-md p-2 text-center">
+                                <span class="text-sm">Not detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Bit Width -->
+                <div class="bg-purple-600 dark:bg-purple-800 rounded-lg overflow-hidden">
+                    <div class="p-3 bg-opacity-90 text-white">
+                        <h3 class="text-sm font-semibold mb-2">Bit Width</h3>
+                        {% if analysis_results.bit_width %}
+                            <div class="bg-purple-700 dark:bg-purple-900 rounded-md p-2 text-center">
+                                <span class="text-lg font-semibold">{{ analysis_results.bit_width|join:", " }}</span>
+                            </div>
+                        {% else %}
+                            <div class="bg-purple-700 dark:bg-purple-900 rounded-md p-2 text-center">
+                                <span class="text-sm">Not detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Floating Point Type -->
+                <div class="bg-indigo-600 dark:bg-indigo-800 rounded-lg overflow-hidden">
+                    <div class="p-3 bg-opacity-90 text-white">
+                        <h3 class="text-sm font-semibold mb-2">Floating Point Type</h3>
+                        {% if analysis_results.floating_point_type %}
+                            <div class="bg-indigo-700 dark:bg-indigo-900 rounded-md p-2 text-center">
+                                <span class="text-lg font-semibold">{{ analysis_results.floating_point_type|join:", " }}</span>
+                            </div>
+                        {% else %}
+                            <div class="bg-indigo-700 dark:bg-indigo-900 rounded-md p-2 text-center">
+                                <span class="text-sm">Not detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detection Details -->
+            <div class="mt-6">
+                
+                <div class="space-y-4">
+                    <!-- Consolidated Detection Details -->
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center collapsible-section" data-target="all-detection-details">
+                            <h4 class="font-medium text-gray-800 dark:text-gray-200">Detection Details</h4>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
+                        <div id="all-detection-details" class="collapsible-content">
+                            <div class="p-4 space-y-4">
+                                
+                                {% if analysis_results.consolidated_detection_details %}
+                                    {% for detail in analysis_results.consolidated_detection_details %}
+                                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+                                            
+                                            <!-- Header with detection types -->
+                                            <div class="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <div class="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        Binary: {{ detail.binary|rootfs_path }}
+                                                        {% if detail.note %}<span class="text-xs text-gray-500 ml-2">({{ detail.note }})</span>{% endif %}
+                                                    </div>
+                                                    <div class="flex flex-wrap gap-1">
+                                                        {% for detection_type in detail.detection_types %}
+                                                            {% if detection_type == "bitwidth" %}
+                                                                <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs px-2 py-1 rounded-full">
+                                                                    Bit Width: {{ detail.detected_values.bitwidth|join:", " }}-bit
+                                                                </span>
+                                                            {% elif detection_type == "endianness" %}
+                                                                <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-2 py-1 rounded-full">
+                                                                    Endianness: {{ detail.detected_values.endianness|join:", " }}
+                                                                </span>
+                                                            {% elif detection_type == "architecture" %}
+                                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full">
+                                                                    Architecture: {{ detail.detected_values.architecture }}
+                                                                </span>
+                                                            {% elif detection_type == "floating_point" %}
+                                                                <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs px-2 py-1 rounded-full">
+                                                                    Floating Point: {{ detail.detected_values.floating_point|join:", " }}
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Command output with consolidated highlighting -->
+                                            <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                                                <code class="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap">$ {{ detail.command|clean_command_display:detail.binary }}
+{{ detail.output|highlight_consolidated_output:detail }}</code>
+                                            </div>
+                                            
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- No Detection Details Available -->
+                                    <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        No detailed command outputs available for this analysis.
+                                    </div>
+                                {% endif %}
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boot Process Info Section -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-cogs text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Boot Process Info</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Boot Process Info -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Init Files -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-teal-500 to-teal-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Init Files</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.init_files %}
+                            <div class="space-y-4">
+                                {% for file_type, files in analysis_results.init_files.items %}
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div class="bg-gray-100 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section" data-target="init-files-{{ forloop.counter }}">
+                                            <h4 class="font-medium text-gray-800 dark:text-gray-200">{{ file_type|replace_underscores }}</h4>
+                                            <div class="flex items-center">
+                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full mr-2">{{ files|length }}</span>
+                                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                            </div>
+                                        </div>
+                                        <div id="init-files-{{ forloop.counter }}" class="collapsible-content">
+                                            <div class="p-3 max-h-60 overflow-y-auto">
+                                                <ul class="space-y-1 text-sm">
+                                                    {% for file in files %}
+                                                        <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                            <span class="text-gray-800 dark:text-gray-200 break-all text-xs">{{ file|rootfs_path }}</span>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-md">
+                                <p>No init files detected</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Init Scripts Location -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Init Scripts Location</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.init_scripts_location %}
+                            <div class="space-y-4">
+                                {% for script_type, scripts in analysis_results.init_scripts_location.items %}
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div class="bg-gray-100 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section" data-target="init-scripts-{{ forloop.counter }}">
+                                            <h4 class="font-medium text-gray-800 dark:text-gray-200">{{ script_type|replace_underscores }}</h4>
+                                            <div class="flex items-center">
+                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full mr-2">{{ scripts|length }}</span>
+                                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                            </div>
+                                        </div>
+                                        <div id="init-scripts-{{ forloop.counter }}" class="collapsible-content">
+                                            <div class="p-3 max-h-60 overflow-y-auto">
+                                                <ul class="space-y-1 text-sm">
+                                                    {% for script in scripts %}
+                                                        <li class="border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-900">
+                                                            <span class="text-gray-800 dark:text-gray-200 break-all text-xs">{{ script|rootfs_path }}</span>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-md">
+                                <p>No init scripts location detected</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Info Section -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-info-circle text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Additional Info</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- User Account Info -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-3">
+                        <h3 class="font-bold text-white">User Accounts & Authentication</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.user_accounts %}
+                            <div class="space-y-3">
+                                {% if analysis_results.user_accounts.hash_algo or analysis_results.user_accounts.root_hash_type %}
+                                    <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Password Hash Algorithm</span>
+                                            {% if analysis_results.user_accounts.hash_algo %}
+                                                <span class="{% if analysis_results.user_accounts.hash_algo == 'md5' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200{% endif %} text-xs px-2 py-1 rounded-full font-medium font-mono">{{ analysis_results.user_accounts.hash_algo|upper }}</span>
+                                            {% elif analysis_results.user_accounts.root_hash_type %}
+                                                <span class="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs px-2 py-1 rounded-full font-medium font-mono">{{ analysis_results.user_accounts.root_hash_type|upper }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if analysis_results.user_accounts.hash_detection_method %}
+                                            <div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                <i class="fas fa-microscope mr-1"></i>
+                                                <span class="font-medium">Detected via:</span>
+                                                <span>
+                                                    {% if analysis_results.user_accounts.hash_detection_method == 'elf_inspection' %}
+                                                        ELF / strings inspection
+                                                    {% elif analysis_results.user_accounts.hash_detection_method == 'shadow_file' %}
+                                                        Shadow file
+                                                    {% elif analysis_results.user_accounts.hash_detection_method == 'metadata' %}
+                                                        Firmware metadata
+                                                    {% else %}
+                                                        Default ({{ analysis_results.user_accounts.hash_detection_method }})
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                        {% if analysis_results.user_accounts.hash_detection_signal %}
+                                            <div class="flex items-start gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                                <i class="fas fa-fingerprint mr-1 mt-0.5"></i>
+                                                <span class="font-mono break-all">{{ analysis_results.user_accounts.hash_detection_signal }}</span>
+                                            </div>
+                                        {% elif analysis_results.user_accounts.hash_source %}
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                <i class="fas fa-fingerprint mr-1"></i>Source: {{ analysis_results.user_accounts.hash_source }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                {% if analysis_results.user_accounts.users %}
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div class="bg-gray-100 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section" data-target="user-accounts-list">
+                                            <h4 class="font-medium text-gray-800 dark:text-gray-200">Detected Users</h4>
+                                            <div class="flex items-center">
+                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full mr-2">{{ analysis_results.user_accounts.users|length }}</span>
+                                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                            </div>
+                                        </div>
+                                        <div id="user-accounts-list" class="collapsible-content">
+                                            <div class="p-3 max-h-80 overflow-y-auto">
+                                                <div class="space-y-2">
+                                                    {% for user in analysis_results.user_accounts.users %}
+                                                        <div class="bg-gray-50 dark:bg-gray-900 p-2 rounded-md border border-gray-200 dark:border-gray-700">
+                                                            <div class="flex items-center justify-between mb-1">
+                                                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                                    <i class="fas fa-user mr-1 text-xs"></i>{{ user.username }}
+                                                                </span>
+                                                                <div class="flex items-center space-x-1">
+                                                                    {% if user.has_password %}
+                                                                        <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-2 py-0.5 rounded-full">
+                                                                            <i class="fas fa-key mr-1"></i>{% if user.hash_type %}{{ user.hash_type|upper }}{% else %}Password{% endif %}
+                                                                        </span>
+                                                                    {% else %}
+                                                                        <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full">
+                                                                            <i class="fas fa-lock-open mr-1"></i>No Password
+                                                                        </span>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="grid grid-cols-2 gap-x-4 text-xs text-gray-600 dark:text-gray-400">
+                                                                <div><span class="font-medium">UID:</span> {{ user.uid }}</div>
+                                                                <div><span class="font-medium">GID:</span> {{ user.gid }}</div>
+                                                                <div class="col-span-2"><span class="font-medium">Shell:</span> {{ user.shell }}</div>
+                                                                <div class="col-span-2 truncate"><span class="font-medium">Home:</span> {{ user.home }}</div>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-md">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                <span>No user account information detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- SSH Service Info -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-3">
+                        <h3 class="font-bold text-white">SSH Service</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.ssh_service %}
+                            <div class="space-y-3">
+                                <!-- SSH Manager -->
+                                {% if analysis_results.ssh_service.implementation %}
+                                    <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">SSH Manager</span>
+                                            {% if analysis_results.ssh_service.implementation == 'unknown' %}
+                                                <span class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-2 py-1 rounded-full font-medium">
+                                                    {{ analysis_results.ssh_service.implementation|upper }}
+                                                </span>
+                                            {% else %}
+                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full font-medium">
+                                                    {{ analysis_results.ssh_service.implementation|upper }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        {% if analysis_results.ssh_service.binary_path %}
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 break-all mt-2">
+                                                <i class="fas fa-terminal mr-1"></i>Binary: {{ analysis_results.ssh_service.binary_path }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- SSH Config File -->
+                                {% if analysis_results.ssh_service.config_content %}
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                            <!-- File header -->
+                                            <div class="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                                                        <i class="fas fa-file-code mr-1"></i>{{ analysis_results.ssh_service.config_path }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ analysis_results.ssh_service.config_size }} bytes</span>
+                                                </div>
+                                            </div>
+                                            <!-- File content - expandable -->
+                                            <div class="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section cursor-pointer" data-target="ssh-config-content">
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                    <i class="fas fa-code mr-1"></i>View Content
+                                                </span>
+                                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                            </div>
+                                            <div id="ssh-config-content" class="collapsible-content">
+                                                <div class="p-3 bg-gray-900 dark:bg-black">
+                                                    <pre class="text-xs text-green-400 dark:text-green-300 whitespace-pre-wrap overflow-auto max-h-96 font-mono">{{ analysis_results.ssh_service.config_content }}</pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% elif analysis_results.ssh_service.config_path %}
+                                    <!-- Config path exists but no content (like TinySSH key directory) -->
+                                    <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 break-all">
+                                            <i class="fas fa-folder mr-1"></i>Config: {{ analysis_results.ssh_service.config_path }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-md">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                <span>No SSH service detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Network Configuration Info -->
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3">
+                        <h3 class="font-bold text-white">Network Configuration</h3>
+                    </div>
+                    <div class="p-4">
+                        {% if analysis_results.network_config %}
+                            <div class="space-y-3">
+                                <!-- Network Manager -->
+                                {% if analysis_results.network_config.network_manager %}
+                                    <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Network Manager</span>
+                                            <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full font-medium">
+                                                {{ analysis_results.network_config.network_manager }}
+                                            </span>
+                                        </div>
+                                        {% if analysis_results.network_config.network_manager_path %}
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 break-all mt-2">
+                                                <i class="fas fa-terminal mr-1"></i>Binary: {{ analysis_results.network_config.network_manager_path }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- Detected Interfaces -->
+                                {% if analysis_results.network_config.interfaces %}
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div class="bg-gray-100 dark:bg-gray-700 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section cursor-pointer" data-target="network-interfaces">
+                                            <h4 class="font-medium text-gray-800 dark:text-gray-200">
+                                                <i class="fas fa-network-wired mr-2"></i>Network Interfaces
+                                            </h4>
+                                            <div class="flex items-center">
+                                                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full mr-2">{{ analysis_results.network_config.interfaces|length }}</span>
+                                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                            </div>
+                                        </div>
+                                        <div id="network-interfaces" class="collapsible-content">
+                                            <div class="p-3 max-h-80 overflow-y-auto">
+                                                <div class="space-y-2">
+                                                    {% for iface in analysis_results.network_config.interfaces %}
+                                                        <div class="bg-gray-50 dark:bg-gray-900 p-2 rounded-md border border-gray-200 dark:border-gray-700">
+                                                            <div class="flex items-center justify-between mb-1">
+                                                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                                    <i class="fas fa-network-wired mr-1 text-xs"></i>
+                                                                    {% if iface.name %}{{ iface.name }}{% elif iface.ifname %}{{ iface.ifname }}{% else %}Unknown{% endif %}
+                                                                </span>
+                                                                {% if iface.proto %}
+                                                                    <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs px-2 py-0.5 rounded-full">
+                                                                        {{ iface.proto|upper }}
+                                                                    </span>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="grid grid-cols-2 gap-x-4 text-xs text-gray-600 dark:text-gray-400">
+                                                                {% if iface.ipaddr %}
+                                                                    <div class="col-span-2"><span class="font-medium">IP:</span> <span class="font-mono">{{ iface.ipaddr }}</span></div>
+                                                                {% endif %}
+                                                                {% if iface.netmask %}
+                                                                    <div><span class="font-medium">Netmask:</span> {{ iface.netmask }}</div>
+                                                                {% endif %}
+                                                                {% if iface.gateway %}
+                                                                    <div><span class="font-medium">Gateway:</span> {{ iface.gateway }}</div>
+                                                                {% endif %}
+                                                                {% if iface.type %}
+                                                                    <div class="col-span-2 text-gray-500 dark:text-gray-500"><span class="font-medium">Type:</span> {{ iface.type }}</div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- Network Config Files -->
+                                {% if analysis_results.network_config.config_files %}
+                                    {% for config_file in analysis_results.network_config.config_files %}
+                                        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                                            <div class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                                <!-- File header -->
+                                                <div class="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                                                            <i class="fas fa-file-code mr-1"></i>{{ config_file.path }}
+                                                        </span>
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ config_file.size }} bytes</span>
+                                                    </div>
+                                                </div>
+                                                <!-- File content - expandable -->
+                                                <div class="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center collapsible-section cursor-pointer" data-target="config-content-{{ forloop.counter }}">
+                                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                        <i class="fas fa-code mr-1"></i>View Content
+                                                    </span>
+                                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                                                </div>
+                                                <div id="config-content-{{ forloop.counter }}" class="collapsible-content">
+                                                    <div class="p-3 bg-gray-900 dark:bg-black">
+                                                        <pre class="text-xs text-green-400 dark:text-green-300 whitespace-pre-wrap overflow-auto max-h-96 font-mono">{{ config_file.content }}</pre>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-md">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                <span>No network configuration detected</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Saved Command Outputs Section -->
+    {% if analysis_results.saved_outputs_summary %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-gray-500 to-gray-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-file-code text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Saved Command Outputs</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for filename, info in analysis_results.saved_outputs_summary.items %}
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-slate-500 to-slate-600 px-4 py-3">
+                            <h3 class="font-bold text-white text-sm">{{ filename }}</h3>
+                        </div>
+                        <div class="p-4">
+                            {% if info.exists %}
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Size:</span>
+                                        <span class="text-gray-900 dark:text-white font-medium">{{ info.size_kb }} KB</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Lines:</span>
+                                        <span class="text-gray-900 dark:text-white font-medium">{{ info.line_count }}</span>
+                                    </div>
+                                    {% if info.error %}
+                                        <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-2 rounded-md text-xs">
+                                            Error: {{ info.error }}
+                                        </div>
+                                    {% else %}
+                                        <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-2 rounded-md">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            <span class="text-xs">Available</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 p-3 rounded-md text-center text-sm">
+                                    <i class="fas fa-minus-circle mr-1"></i>
+                                    Not generated
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-6 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 dark:text-blue-400 mr-3 mt-1"></i>
+                    <div class="text-sm text-blue-700 dark:text-blue-300">
+                        <p class="font-medium mb-1">Command Output Files</p>
+                        <p>These files contain the raw outputs from system commands used during analysis. They are saved for transparency and debugging purposes. Each file includes metadata about the commands executed and timestamps.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-4 mb-8">
+        <a href="{% url 'xscout:extract' %}?firmware_id={{ firmware.id }}" class="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-md shadow-sm transition-all duration-200">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Extraction
+        </a>
+        
+    </div>
+    {% endif %}
+    
+    <!-- Removed "Analyze Another Firmware" section -->
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('analysis-form');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const firmwareSelect = document.getElementById('firmware-select');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!firmwareSelect.value) {
+                    alert('Please select a firmware to analyze');
+                    return;
+                }
+                
+                // Disable button and show loading state
+                analyzeBtn.disabled = true;
+                analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analyzing...';
+                
+                // Submit the form
+                this.submit();
+            });
+        }
+        
+        // Re-run analysis form handling
+        const rerunForm = document.getElementById('rerun-analysis-form');
+        const rerunBtn = document.getElementById('rerun-analysis-btn');
+        
+        if (rerunForm && rerunBtn) {
+            rerunForm.addEventListener('submit', function(e) {
+                // Disable button and show loading state
+                rerunBtn.disabled = true;
+                rerunBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Running Analysis...';
+            });
+        }
+        
+        // Run analysis form handling (for when no analysis exists)
+        const runForm = document.getElementById('run-analysis-form');
+        const runBtn = document.getElementById('run-analysis-btn');
+        
+        if (runForm && runBtn) {
+            runForm.addEventListener('submit', function(e) {
+                // Disable button and show loading state
+                runBtn.disabled = true;
+                runBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Running Analysis...';
+            });
+        }
+        
+        // Initialize collapsible sections
+        const collapsibleSections = document.querySelectorAll('.collapsible-section');
+        collapsibleSections.forEach(section => {
+            section.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const targetContent = document.getElementById(targetId);
+                
+                if (!targetContent) return; // Skip if target not found
+                
+                // Toggle the content visibility
+                const isOpen = targetContent.classList.toggle('open');
+                
+                // Toggle the chevron icon
+                const chevron = this.querySelector('.fa-chevron-down, .fa-chevron-up');
+                if (chevron) {
+                    chevron.classList.toggle('fa-chevron-down', !isOpen);
+                    chevron.classList.toggle('fa-chevron-up', isOpen);
+                }
+                
+                // Ensure proper display
+                if (isOpen) {
+                    // Set a large height to ensure all content is visible
+                    targetContent.style.maxHeight = '2000px';
+                } else {
+                    targetContent.style.maxHeight = '0';
+                }
+            });
+        });
+    });
+    
+
+</script>
+{% endblock %}
+{% endblock %}

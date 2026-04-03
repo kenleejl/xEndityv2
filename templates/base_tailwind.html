@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}xEndity Platform{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
+                        },
+                        dark: {
+                            800: '#1f2937',
+                            900: '#111827'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-gentle': 'bounceGentle 2s ease-in-out infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Animations -->
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes bounceGentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .dark .glass-effect {
+            background: rgba(17, 24, 39, 0.8);
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
+    <!-- Mobile menu overlay -->
+    <div id="mobile-menu-overlay" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden lg:hidden transition-opacity duration-300"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0">
+        {% block sidebar %}
+        <div class="h-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 shadow-xl">
+            <!-- Logo section -->
+            <div class="flex items-center justify-center h-16 px-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-500 to-primary-600">
+                <a href="{% url 'home' %}" class="flex items-center space-x-3 text-xl font-bold text-white hover:scale-105 transition-transform duration-200">
+                    <div class="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <span>xEndity</span>
+                </a>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="p-4 space-y-6">
+                <!-- Main modules -->
+                <div class="space-y-2">
+                    <h3 class="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modules</h3>
+                    
+                    <a href="{% url 'xquire:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xquire' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105{% endif %}">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xquire' in request.path %}bg-white/20{% else %}bg-blue-100 dark:bg-blue-900{% endif %} mr-3">
+                            <i class="fas fa-download {% if 'xquire' in request.path %}text-white{% else %}text-blue-600 dark:text-blue-300{% endif %}"></i>
+                        </div>
+                        <span>xQuire</span>
+                        <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <i class="fas fa-arrow-right text-xs"></i>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'xscout:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xscout' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105{% endif %}">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xscout' in request.path %}bg-white/20{% else %}bg-green-100 dark:bg-green-900{% endif %} mr-3">
+                            <i class="fas fa-search {% if 'xscout' in request.path %}text-white{% else %}text-green-600 dark:text-green-300{% endif %}"></i>
+                        </div>
+                        <span>xScout</span>
+                        <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <i class="fas fa-arrow-right text-xs"></i>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'xformation:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xformation' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105{% endif %}">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xformation' in request.path %}bg-white/20{% else %}bg-purple-100 dark:bg-purple-900{% endif %} mr-3">
+                            <i class="fas fa-project-diagram {% if 'xformation' in request.path %}text-white{% else %}text-purple-600 dark:text-purple-300{% endif %}"></i>
+                        </div>
+                        <span>xFormation</span>
+                        <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <i class="fas fa-arrow-right text-xs"></i>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Admin section -->
+                {% if user.is_staff %}
+                <div class="space-y-2">
+                    <h3 class="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Administration</h3>
+                    
+                    <a href="{% url 'dashboard' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'dashboard' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105{% endif %}">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'dashboard' in request.path %}bg-white/20{% else %}bg-orange-100 dark:bg-orange-900{% endif %} mr-3">
+                            <i class="fas fa-tachometer-alt {% if 'dashboard' in request.path %}text-white{% else %}text-orange-600 dark:text-orange-300{% endif %}"></i>
+                        </div>
+                        <span>Dashboard</span>
+                        <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <i class="fas fa-arrow-right text-xs"></i>
+                        </div>
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
+        </div>
+        {% endblock %}
+    </div>
+    
+    <!-- Main content wrapper -->
+    <div class="lg:ml-64">
+        <!-- Top navigation -->
+        <nav class="sticky top-0 z-30 glass-effect border-b border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <!-- Page title -->
+                    <div class="flex items-center space-x-4">
+                        {% block page_header %}
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+                            {% block page_title %}xEndity{% endblock %}
+                        </h1>
+                        {% endblock %}
+                    </div>
+                    
+                    <!-- Right side navigation -->
+                    <div class="flex items-center space-x-3">
+                        <!-- Notifications -->
+                        <button class="relative p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110">
+                            <i class="fas fa-bell"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        </button>
+                        
+                        <!-- Theme toggle -->
+                        <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110">
+                            <i id="theme-icon-light" class="fas fa-moon dark:hidden"></i>
+                            <i id="theme-icon-dark" class="fas fa-sun hidden dark:block"></i>
+                        </button>
+                        
+                        <!-- User menu -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105">
+                                <div class="w-8 h-8 bg-gradient-to-r from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-white text-sm"></i>
+                                </div>
+                                <span class="hidden sm:block font-medium">{{ user.username|default:"Guest" }}</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div x-show="open" @click.away="open = false" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-150"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2">
+                                {% if user.is_authenticated %}
+                                    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ user.get_full_name|default:user.username }}</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email|default:"No email" }}</p>
+                                    </div>
+                                    <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                        <i class="fas fa-sign-out-alt mr-3 text-red-500"></i>Logout
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'login' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                        <i class="fas fa-sign-in-alt mr-3 text-green-500"></i>Login
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Main content -->
+        <main class="py-6 px-4 sm:px-6 lg:px-8 animate-fade-in">
+            <!-- Messages -->
+            {% if messages %}
+                <div class="mb-6 space-y-3" id="messages-container">
+                    {% for message in messages %}
+                        <div class="animate-slide-down rounded-xl p-4 shadow-lg border-l-4 {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900/20 border-red-400 text-red-800 dark:text-red-200{% elif message.tags == 'warning' %}bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 text-yellow-800 dark:text-yellow-200{% elif message.tags == 'success' %}bg-green-50 dark:bg-green-900/20 border-green-400 text-green-800 dark:text-green-200{% else %}bg-blue-50 dark:bg-blue-900/20 border-blue-400 text-blue-800 dark:text-blue-200{% endif %}" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% elif message.tags == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %} mr-3 text-lg"></i>
+                                    <span class="font-medium">{{ message }}</span>
+                                </div>
+                                <button @click="show = false" class="text-current opacity-50 hover:opacity-100 transition-opacity duration-200 hover:scale-110">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="lg:ml-64 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    &copy; {% now "Y" %} xEndity Platform. Built with ❤️ for IoT Security.
+                </p>
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors duration-200">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors duration-200">
+                        <i class="fas fa-book"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        // Mobile menu functionality
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-menu-overlay');
+        
+        mobileMenuBtn?.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+            document.body.classList.toggle('overflow-hidden');
+        });
+        
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        });
+        
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        
+        themeToggle?.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // Add animation effect
+            themeToggle.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                themeToggle.style.transform = 'scale(1)';
+            }, 150);
+        });
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            html.classList.add('dark');
+        }
+        
+        // Auto-dismiss messages
+        document.addEventListener('DOMContentLoaded', () => {
+            const messages = document.querySelectorAll('#messages-container > div');
+            messages.forEach((message, index) => {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateX(100%)';
+                    setTimeout(() => message.remove(), 300);
+                }, 5000 + (index * 500));
+            });
+        });
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html> 

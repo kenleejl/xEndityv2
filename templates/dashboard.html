@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - xEndity{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg">
+        <i class="fas fa-tachometer-alt text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">System overview and management</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Firmwares Card -->
+        <div class="group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-file-archive text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-blue-100 text-sm font-medium">Firmwares</p>
+                    <p class="text-3xl font-bold">{{ firmware_count }}</p>
+                </div>
+            </div>
+                            <a href="{% url 'xquire:index' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">View All</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Device Types Card -->
+        <div class="group bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-microchip text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-green-100 text-sm font-medium">Device Types</p>
+                    <p class="text-3xl font-bold">{{ device_type_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'admin:modules_xQuire_devicetype_changelist' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Manage</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Manufacturers Card -->
+        <div class="group bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-industry text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-purple-100 text-sm font-medium">Manufacturers</p>
+                    <p class="text-3xl font-bold">{{ manufacturer_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'admin:modules_xQuire_manufacturer_changelist' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Manage</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Storage Usage Card -->
+        <div class="group bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-database text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-gray-100 text-sm font-medium">Storage Usage</p>
+                    <p class="text-3xl font-bold">--</p>
+                </div>
+            </div>
+            <span class="text-gray-100 text-sm">System Storage</span>
+        </div>
+    </div>
+    
+    <!-- Modules and Recent Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Module Cards -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800">
+                <h3 class="text-lg font-semibold text-white flex items-center">
+                    <div class="p-2 bg-white/20 rounded-lg mr-3">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    Platform Modules
+                </h3>
+            </div>
+            <div class="p-6 space-y-4">
+                {% for module in modules %}
+                <div class="group p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200 hover:shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl">
+                                <i class="{{ module.icon }} text-white"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-900 dark:text-white">{{ module.name }}</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">{{ module.description }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 mb-2">
+                                {{ module.count }}
+                            </span>
+                            <div>
+                                <a href="{% url module.url %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-700 dark:hover:bg-primary-900/40 transition-all duration-200">
+                                    Access
+                                    <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Firmwares -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800">
+                <h3 class="text-lg font-semibold text-white flex items-center">
+                    <div class="p-2 bg-white/20 rounded-lg mr-3">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    Recent Firmwares
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    {% for firmware in recent_firmwares %}
+                    <div class="group p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200 hover:shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">{{ firmware.model }}</h4>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ firmware.upload_date|date:"M d, Y" }}</span>
+                        </div>
+                        <p class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{{ firmware.version|default:"No version" }}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ firmware.model.manufacturer }} - {{ firmware.model.device_type }}</span>
+                            <a href="{% url 'xquire:firmware_detail' firmware.id %}" class="inline-flex items-center px-3 py-1 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-700 dark:hover:bg-primary-900/40 transition-all duration-200">
+                                View
+                                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8">
+                        <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl inline-block mb-4">
+                            <i class="fas fa-upload text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400">No firmware uploaded yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Action buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'xquire:index' %}" class="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 transition-all duration-200">
+                        <i class="fas fa-list mr-2"></i>View All Firmwares
+                    </a>
+                    <a href="{% url 'xquire:upload_firmware' %}" class="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-200">
+                        <i class="fas fa-upload mr-2"></i>Upload New
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

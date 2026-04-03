@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}xEndity Platform{% endblock %}</title>
+    
+    <!-- Favicon -->
+    {% load static %}
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'images/site.webmanifest' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Early sidebar state initialization -->
+    <script>
+        // Initialize sidebar state immediately to prevent flash
+        (function() {
+            const savedSidebarState = localStorage.getItem('sidebarCollapsed');
+            if (savedSidebarState === 'true') {
+                // Add styles immediately to prevent flash
+                const style = document.createElement('style');
+                style.id = 'sidebar-init-style';
+                style.textContent = `
+                    #sidebar {
+                        width: 5rem !important;
+                    }
+                    #sidebar .sidebar-text {
+                        display: none;
+                    }
+                    #sidebar .sidebar-collapse-icon {
+                        display: none;
+                    }
+                    #sidebar .sidebar-expand-icon {
+                        display: block !important;
+                    }
+                    #sidebar nav {
+                        padding: 1rem 0.75rem;
+                    }
+                    #sidebar nav .space-y-2 {
+                        margin-bottom: 1.5rem;
+                    }
+                    #sidebar nav a {
+                        padding: 0.75rem !important;
+                        justify-content: center;
+                        margin: 0.25rem 0;
+                    }
+                    #sidebar nav a .mr-3 {
+                        margin-right: 0 !important;
+                    }
+                    @media (min-width: 1024px) {
+                        #main-content {
+                            margin-left: 5rem !important;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // Set data attributes for proper initialization
+                document.documentElement.setAttribute('data-sidebar-collapsed', 'true');
+            }
+        })();
+    </script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Animations -->
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Sidebar collapse styles */
+        .sidebar-collapsed {
+            width: 5rem !important;
+        }
+        
+        .sidebar-collapsed .sidebar-text {
+            display: none;
+        }
+        
+        .sidebar-collapsed .sidebar-collapse-icon {
+            display: none;
+        }
+        
+        .sidebar-collapsed .sidebar-expand-icon {
+            display: block !important;
+        }
+        
+        .sidebar-collapsed nav {
+            padding: 1rem 0.75rem;
+        }
+        
+        .sidebar-collapsed nav .space-y-2 {
+            margin-bottom: 1.5rem;
+        }
+        
+        .sidebar-collapsed nav a {
+            padding: 0.75rem !important;
+            justify-content: center;
+            margin: 0.25rem 0;
+        }
+        
+        .sidebar-collapsed nav a .mr-3 {
+            margin-right: 0 !important;
+        }
+        
+        .sidebar-expanded .sidebar-collapse-icon {
+            display: block;
+        }
+        
+        .sidebar-expanded .sidebar-expand-icon {
+            display: none;
+        }
+        
+        /* Main content adjustments */
+        .main-content-collapsed {
+            margin-left: 5rem !important;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar-collapsed {
+                width: 16rem !important;
+            }
+            .main-content-collapsed {
+                margin-left: 16rem !important;
+            }
+            .sidebar-collapsed .sidebar-text {
+                display: block;
+            }
+            .sidebar-collapsed nav {
+                padding: 1rem;
+            }
+            .sidebar-collapsed nav a {
+                padding: 0.75rem 1rem !important;
+                justify-content: flex-start;
+            }
+            .sidebar-collapsed nav a .mr-3 {
+                margin-right: 0.75rem !important;
+            }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
+    <!-- Mobile menu overlay -->
+    <div id="mobile-menu-overlay" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full transition-all duration-300 ease-in-out lg:translate-x-0 sidebar-expanded" data-initial-state="expanded">
+        <div class="h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl">
+            <!-- Logo section -->
+            <div class="flex items-center justify-between h-14 px-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-500 to-primary-600">
+                <a href="{% url 'home' %}" class="flex items-center space-x-3 text-xl font-bold text-white hover:scale-105 transition-transform duration-200">
+                    <div class="p-2 bg-white/20 rounded-lg">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <span class="sidebar-text">xEndity</span>
+                </a>
+                <!-- Collapse button -->
+                <button id="sidebar-toggle" class="hidden lg:flex p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200">
+                    <i class="fas fa-chevron-left sidebar-collapse-icon"></i>
+                    <i class="fas fa-chevron-right sidebar-expand-icon hidden"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="p-4 space-y-6">
+                <!-- Main modules -->
+                <div class="space-y-2">
+                    <h3 class="sidebar-text px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modules</h3>
+                    
+                    <a href="{% url 'xquire:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xquire' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}" title="xQuire - Firmware Management">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xquire' in request.path %}bg-white/20{% else %}bg-blue-100 dark:bg-blue-900{% endif %} mr-3 flex-shrink-0">
+                            <i class="fas fa-download {% if 'xquire' in request.path %}text-white{% else %}text-blue-600 dark:text-blue-300{% endif %}"></i>
+                        </div>
+                        <span class="sidebar-text truncate">xQuire</span>
+                    </a>
+                    
+                    <a href="{% url 'xscout:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xscout' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}" title="xScout - Static Analysis">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xscout' in request.path %}bg-white/20{% else %}bg-green-100 dark:bg-green-900{% endif %} mr-3 flex-shrink-0">
+                            <i class="fas fa-search {% if 'xscout' in request.path %}text-white{% else %}text-green-600 dark:text-green-300{% endif %}"></i>
+                        </div>
+                        <span class="sidebar-text truncate">xScout</span>
+                    </a>
+                    
+                    <a href="{% url 'xformation:index' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'xformation' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}" title="xFormation - Device Emulation">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'xformation' in request.path %}bg-white/20{% else %}bg-purple-100 dark:bg-purple-900{% endif %} mr-3 flex-shrink-0">
+                            <i class="fas fa-project-diagram {% if 'xformation' in request.path %}text-white{% else %}text-purple-600 dark:text-purple-300{% endif %}"></i>
+                        </div>
+                        <span class="sidebar-text truncate">xFormation</span>
+                    </a>
+                </div>
+                
+                <!-- Admin section -->
+                {% if user.is_staff %}
+                <div class="space-y-2">
+                    <h3 class="sidebar-text px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Administration</h3>
+                    
+                    <a href="{% url 'dashboard' %}" class="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 {% if 'dashboard' in request.path %}bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}" title="Dashboard">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if 'dashboard' in request.path %}bg-white/20{% else %}bg-orange-100 dark:bg-orange-900{% endif %} mr-3 flex-shrink-0">
+                            <i class="fas fa-tachometer-alt {% if 'dashboard' in request.path %}text-white{% else %}text-orange-600 dark:text-orange-300{% endif %}"></i>
+                        </div>
+                        <span class="sidebar-text truncate">Dashboard</span>
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+    
+    <!-- Main content wrapper -->
+    <div id="main-content" class="lg:ml-64 min-h-screen transition-all duration-300" data-initial-margin="ml-64">
+        <!-- Top navigation -->
+        <nav class="sticky top-0 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 shadow-sm">
+            <div class="px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-14">
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <!-- Page content -->
+                    <div>
+                        {% block page_header %}
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+                            {% block page_title %}xEndity{% endblock %}
+                        </h1>
+                        {% endblock %}
+                    </div>
+                    
+                    <!-- Right side navigation -->
+                    <div class="flex items-center space-x-3">
+                        <!-- Theme toggle -->
+                        <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200">
+                            <i class="fas fa-moon dark:hidden"></i>
+                            <i class="fas fa-sun hidden dark:block"></i>
+                        </button>
+                        
+                        <!-- User menu -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200">
+                                <div class="w-8 h-8 bg-gradient-to-r from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-white text-sm"></i>
+                                </div>
+                                <span class="hidden sm:block font-medium">{{ user.username|default:"Guest" }}</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2">
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                        <i class="fas fa-sign-out-alt mr-3 text-red-500"></i>Logout
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'login' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                        <i class="fas fa-sign-in-alt mr-3 text-green-500"></i>Login
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        
+        <!-- Main content -->
+        <main class="flex-1 min-w-0 py-6 px-4 sm:px-6 lg:px-8 animate-fade-in">
+            <!-- Messages -->
+            {% if messages %}
+                <div class="mb-6 space-y-3">
+                    {% for message in messages %}
+                        <div class="animate-slide-down rounded-xl p-4 shadow-lg border-l-4 {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900/20 border-red-400 text-red-800 dark:text-red-200{% elif message.tags == 'warning' %}bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 text-yellow-800 dark:text-yellow-200{% elif message.tags == 'success' %}bg-green-50 dark:bg-green-900/20 border-green-400 text-green-800 dark:text-green-200{% else %}bg-blue-50 dark:bg-blue-900/20 border-blue-400 text-blue-800 dark:text-blue-200{% endif %}">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% elif message.tags == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %} mr-3"></i>
+                                    {{ message }}
+                                </div>
+                                <button onclick="this.parentElement.parentElement.remove()" class="text-current opacity-50 hover:opacity-100 transition-opacity duration-200">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    
+    <!-- Scripts -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        // Mobile menu functionality
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-menu-overlay');
+        
+        mobileMenuBtn?.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        });
+        
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        });
+        
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle?.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+        
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+        
+                // Sidebar collapse functionality
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const mainContent = document.getElementById('main-content');
+        
+        // Initialize sidebar state properly
+        function initializeSidebarState() {
+            const savedSidebarState = localStorage.getItem('sidebarCollapsed');
+            const isAlreadyCollapsed = document.documentElement.getAttribute('data-sidebar-collapsed') === 'true';
+            
+            if (savedSidebarState === 'true' && !isAlreadyCollapsed) {
+                // Apply collapsed state
+                sidebar.classList.remove('sidebar-expanded');
+                sidebar.classList.add('sidebar-collapsed');
+                mainContent.classList.add('main-content-collapsed');
+            } else if (isAlreadyCollapsed) {
+                // Clean up the early initialization styles and apply proper classes
+                const initStyle = document.getElementById('sidebar-init-style');
+                if (initStyle) {
+                    initStyle.remove();
+                }
+                sidebar.classList.remove('sidebar-expanded');
+                sidebar.classList.add('sidebar-collapsed');
+                mainContent.classList.add('main-content-collapsed');
+            }
+        }
+        
+        // Initialize on DOM ready
+        initializeSidebarState();
+        
+        sidebarToggle?.addEventListener('click', () => {
+            const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            
+            if (isCollapsed) {
+                // Expand sidebar
+                sidebar.classList.remove('sidebar-collapsed');
+                sidebar.classList.add('sidebar-expanded');
+                mainContent.classList.remove('main-content-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'false');
+                document.documentElement.removeAttribute('data-sidebar-collapsed');
+            } else {
+                // Collapse sidebar
+                sidebar.classList.remove('sidebar-expanded');
+                sidebar.classList.add('sidebar-collapsed');
+                mainContent.classList.add('main-content-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'true');
+                document.documentElement.setAttribute('data-sidebar-collapsed', 'true');
+            }
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html> 

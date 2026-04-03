@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+
+{% block title %}Download Firmware - xQuire{% endblock %}
+
+{% block page_title %}Download Firmware{% endblock %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg">
+        <i class="fas fa-download text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xQuire</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Firmware Download and Management Module</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- Progress Bar (Hidden by default) -->
+    <div id="downloadProgress" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600">
+            <h3 class="text-xl font-semibold text-white flex items-center">
+                <i class="fas fa-cloud-download-alt mr-3"></i>
+                Downloading Firmware
+            </h3>
+        </div>
+        <div class="p-8">
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Download Progress</span>
+                    <span id="downloadStatus" class="text-sm font-medium text-blue-600 dark:text-blue-400">Starting...</span>
+                </div>
+                <!-- Indeterminate progress bar -->
+                <div class="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-700 overflow-hidden">
+                    <div id="downloadBar" class="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full animate-pulse transition-all duration-300 ease-out" style="width: 100%">
+                        <div class="h-full bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    <span id="downloadUrl">Preparing download...</span>
+                    <span id="downloadTime">0:00</span>
+                </div>
+                <div id="progressMessage" class="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    Initializing download request...
+                </div>
+                
+                <!-- Cancel button -->
+                <div class="flex justify-center pt-4">
+                    <button id="cancelDownload" class="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors duration-200">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Download Form -->
+    <div id="downloadForm" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600">
+            <h3 class="text-xl font-semibold text-white flex items-center">
+                <i class="fas fa-globe mr-3"></i>
+                Firmware Download Form
+            </h3>
+        </div>
+        <div class="p-8">
+            <form id="firmwareDownloadForm" method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- URL Section -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">Firmware URL</h4>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.url.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-link mr-2 text-blue-500"></i>Direct Download URL
+                        </label>
+                        <div class="relative">
+                            <input type="url" name="{{ form.url.name }}" id="{{ form.url.id_for_label }}" value="{{ form.url.value|default:'' }}" class="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" placeholder="https://example.com/firmware.bin" required>
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-globe text-gray-400"></i>
+                            </div>
+                        </div>
+                        {% if form.url.errors %}
+                            <div class="text-red-500 text-sm mt-1">{{ form.url.errors.0 }}</div>
+                        {% endif %}
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Enter the direct URL to the firmware file</p>
+                    </div>
+                </div>
+
+                <!-- Device Information -->
+                <div class="space-y-6">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">Device Information</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Manufacturer -->
+                        <div class="space-y-2">
+                            <label for="{{ form.manufacturer.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-industry mr-2 text-blue-500"></i>Manufacturer
+                            </label>
+                            <select name="{{ form.manufacturer.name }}" id="{{ form.manufacturer.id_for_label }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" required>
+                                <option value="">Select Manufacturer</option>
+                                {% for choice in form.manufacturer.field.choices %}
+                                    {% if choice.0 %}
+                                        <option value="{{ choice.0 }}" {% if form.manufacturer.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.manufacturer.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.manufacturer.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Device Type -->
+                        <div class="space-y-2">
+                            <label for="{{ form.device_type.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-microchip mr-2 text-blue-500"></i>Device Type
+                            </label>
+                            <select name="{{ form.device_type.name }}" id="{{ form.device_type.id_for_label }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" required>
+                                <option value="">Select Device Type</option>
+                                {% for choice in form.device_type.field.choices %}
+                                    {% if choice.0 %}
+                                        <option value="{{ choice.0 }}" {% if form.device_type.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.device_type.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.device_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Model Number -->
+                        <div class="space-y-2">
+                            <label for="{{ form.model_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-tag mr-2 text-blue-500"></i>Model Number
+                            </label>
+                            <input type="text" name="{{ form.model_number.name }}" id="{{ form.model_number.id_for_label }}" value="{{ form.model_number.value|default:'' }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" placeholder="e.g., DIR-880L" required>
+                            {% if form.model_number.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.model_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Version -->
+                        <div class="space-y-2">
+                            <label for="{{ form.version.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <i class="fas fa-code-branch mr-2 text-blue-500"></i>Version
+                            </label>
+                            <input type="text" name="{{ form.version.name }}" id="{{ form.version.id_for_label }}" value="{{ form.version.value|default:'' }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" placeholder="e.g., 1.04.B01" required>
+                            {% if form.version.errors %}
+                                <div class="text-red-500 text-sm mt-1">{{ form.version.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="space-y-2">
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-sticky-note mr-2 text-blue-500"></i>Notes (Optional)
+                    </label>
+                    <textarea name="{{ form.notes.name }}" id="{{ form.notes.id_for_label }}" rows="4" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" placeholder="Add any additional information about this firmware download...">{{ form.notes.value|default:'' }}</textarea>
+                    {% if form.notes.errors %}
+                        <div class="text-red-500 text-sm mt-1">{{ form.notes.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                            <span class="text-red-700 dark:text-red-200 text-sm">{{ form.non_field_errors.0 }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6">
+                    <button type="submit" id="downloadButton" class="flex-1 flex justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-cloud-download-alt mr-2"></i>
+                        Download Firmware
+                    </button>
+                    <a href="{% url 'xquire:index' %}" class="flex-1 flex justify-center items-center px-6 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all duration-200">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Instructions & Guidelines -->
+    <div class="bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-200 dark:border-purple-700 overflow-hidden">
+        <div class="px-6 py-4 bg-purple-500 dark:bg-purple-600">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-info-circle mr-3"></i>
+                Download Guidelines
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- URL Requirements -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-link text-purple-500 mr-2"></i>URL Requirements
+                    </h4>
+                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-purple-500 mr-2 mt-0.5"></i>
+                            <span>Enter the <strong>direct URL</strong> to the firmware file</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-purple-500 mr-2 mt-0.5"></i>
+                            <span>URL must be publicly accessible (no authentication required)</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-purple-500 mr-2 mt-0.5"></i>
+                            <span>Supports HTTPS and HTTP protocols</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-chevron-right text-purple-500 mr-2 mt-0.5"></i>
+                            <span>File will be downloaded to the server automatically</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Supported Sources -->
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-cloud text-orange-500 mr-2"></i>Supported Sources
+                    </h4>
+                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-building text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Manufacturer support pages</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-archive text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Firmware archive repositories</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-globe text-orange-500 mr-2 mt-0.5"></i>
+                            <span>Public file hosting services</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-github text-orange-500 mr-2 mt-0.5"></i>
+                            <span>GitHub releases and repositories</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Device Information Note -->
+            <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl">
+                <div class="flex items-start">
+                    <i class="fas fa-lightbulb text-blue-500 mr-3 mt-0.5"></i>
+                    <div class="text-sm">
+                        <p class="font-medium text-blue-800 dark:text-blue-200 mb-1">Device Information Tips</p>
+                        <ul class="text-blue-700 dark:text-blue-300 space-y-1">
+                            <li>• Enter device details exactly as they appear on the physical device</li>
+                            <li>• Check the device label, manual, or manufacturer website for accuracy</li>
+                            <li>• Version format should match the manufacturer's convention (e.g., 1.0.4, v2.3.1)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mr-3 mt-0.5"></i>
+                    <div class="text-sm">
+                        <p class="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Important Notice</p>
+                        <p class="text-yellow-700 dark:text-yellow-300">Only download firmware from trusted sources. Malicious firmware can compromise device security and functionality.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Download progress and URL validation functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const urlInput = document.getElementById('{{ form.url.id_for_label }}');
+    const form = document.getElementById('firmwareDownloadForm');
+    const downloadForm = document.getElementById('downloadForm');
+    const downloadProgress = document.getElementById('downloadProgress');
+    const downloadStatus = document.getElementById('downloadStatus');
+    const downloadUrl = document.getElementById('downloadUrl');
+    const downloadTime = document.getElementById('downloadTime');
+    const progressMessage = document.getElementById('progressMessage');
+    const cancelDownload = document.getElementById('cancelDownload');
+    const downloadButton = document.getElementById('downloadButton');
+    
+    let downloadStartTime = null;
+    let statusCheckInterval = null;
+    let currentDownloadId = null;
+    
+    // Format time duration
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Update download timer
+    function updateTimer() {
+        if (downloadStartTime) {
+            const elapsed = Math.floor((Date.now() - downloadStartTime) / 1000);
+            downloadTime.textContent = formatTime(elapsed);
+        }
+    }
+    
+    // URL validation
+    if (urlInput) {
+        urlInput.addEventListener('blur', function() {
+            const url = this.value.trim();
+            if (url && !url.match(/^https?:\/\/.+/)) {
+                // Show warning for non-HTTP URLs
+                if (!this.nextElementSibling || !this.nextElementSibling.classList.contains('url-warning')) {
+                    const warning = document.createElement('div');
+                    warning.className = 'url-warning text-yellow-600 text-xs mt-1 flex items-center';
+                    warning.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>URL should start with http:// or https://';
+                    this.parentNode.appendChild(warning);
+                }
+            } else {
+                // Remove warning if URL is valid
+                const warning = this.parentNode.querySelector('.url-warning');
+                if (warning) {
+                    warning.remove();
+                }
+            }
+        });
+    }
+    
+    // Check download status periodically
+    function checkDownloadStatus() {
+        if (!currentDownloadId) return;
+        
+        fetch(`/xquire/download-status/${currentDownloadId}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'completed') {
+                downloadStatus.textContent = 'Completed!';
+                progressMessage.textContent = 'Download completed successfully! Redirecting...';
+                clearInterval(statusCheckInterval);
+                
+                setTimeout(() => {
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1500);
+            } else if (data.status === 'failed') {
+                downloadStatus.textContent = 'Failed';
+                progressMessage.textContent = data.error || 'Download failed. Please try again.';
+                clearInterval(statusCheckInterval);
+                
+                setTimeout(() => {
+                    resetDownloadForm();
+                }, 3000);
+            } else if (data.status === 'downloading') {
+                downloadStatus.textContent = 'Downloading...';
+                progressMessage.textContent = data.message || 'Downloading firmware from remote server...';
+                if (data.url) {
+                    downloadUrl.textContent = data.url;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking download status:', error);
+            clearInterval(statusCheckInterval);
+            setTimeout(() => {
+                resetDownloadForm();
+            }, 3000);
+        });
+    }
+    
+    // Reset form to initial state
+    function resetDownloadForm() {
+        downloadForm.classList.remove('hidden');
+        downloadProgress.classList.add('hidden');
+        downloadStatus.textContent = 'Starting...';
+        progressMessage.textContent = 'Initializing download request...';
+        downloadUrl.textContent = 'Preparing download...';
+        downloadTime.textContent = '0:00';
+        currentDownloadId = null;
+        downloadStartTime = null;
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+        }
+    }
+    
+    // Cancel download
+    if (cancelDownload) {
+        cancelDownload.addEventListener('click', function() {
+            if (currentDownloadId) {
+                fetch(`/xquire/cancel-download/${currentDownloadId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                });
+            }
+            resetDownloadForm();
+        });
+    }
+    
+    // Form submission with progress tracking
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const urlValue = urlInput.value.trim();
+            if (!urlValue) {
+                alert('Please enter a valid URL.');
+                return;
+            }
+            
+            downloadStartTime = Date.now();
+            
+            // Show progress bar and hide form
+            downloadForm.classList.add('hidden');
+            downloadProgress.classList.remove('hidden');
+            
+            // Scroll to progress bar
+            downloadProgress.scrollIntoView({ behavior: 'smooth' });
+            
+            // Update URL display
+            downloadUrl.textContent = urlValue;
+            
+            // Start timer
+            const timerInterval = setInterval(updateTimer, 1000);
+            
+            // Create FormData
+            const formData = new FormData(form);
+            
+            // Send download request
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentDownloadId = data.download_id;
+                    downloadStatus.textContent = 'Downloading...';
+                    progressMessage.textContent = 'Starting download from remote server...';
+                    
+                    // Start checking status periodically
+                    statusCheckInterval = setInterval(checkDownloadStatus, 2000);
+                } else {
+                    downloadStatus.textContent = 'Failed';
+                    progressMessage.textContent = data.error || 'Failed to start download. Please try again.';
+                    clearInterval(timerInterval);
+                    
+                    setTimeout(() => {
+                        resetDownloadForm();
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+                downloadStatus.textContent = 'Error';
+                progressMessage.textContent = 'An error occurred. Please try again.';
+                clearInterval(timerInterval);
+                
+                setTimeout(() => {
+                    resetDownloadForm();
+                }, 3000);
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

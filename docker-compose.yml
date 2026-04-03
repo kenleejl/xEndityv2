@@ -1,0 +1,45 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: xendity-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      # - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+      # - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-password}
+      - MONGO_INITDB_DATABASE=xendity_firmwares
+    networks:
+      - xendity-network
+    restart: unless-stopped
+
+  fwbinary-analysis:
+    build:
+      context: .  # Current directory (root of xEndity project)
+      dockerfile: modules/xScout/docker/Dockerfile.analysis
+    image: xendity/fwbinary-analysis
+    # This container is not meant to be run directly by docker-compose
+    # It will be run programmatically by the Django application
+    # when an analysis is requested
+    networks:
+      - xendity-network
+    profiles:
+      - donotstart
+
+  xfs:
+    build:
+      context: modules/xfs # Current directory (root of xfs)
+      dockerfile: modules/xfs/Dockerfile
+    image: xendity/xfs
+    # This container is not meant to be run directly by docker-compose
+    # It will be run programmatically by the Django application
+    # when an analysis is requested
+    profiles:
+      - donotstart
+
+networks:
+  xendity-network:  # <-- Define network
+    driver: bridge
+volumes:
+  mongodb_data: 

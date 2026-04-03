@@ -1,0 +1,1056 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ instance.instance_name }} - Instance Detail{% endblock %}
+
+{% block extra_head %}
+<style>
+    .terminal-container {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        color: #00ff00;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+    .terminal-header {
+        background: linear-gradient(90deg, #333, #444);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #555;
+    }
+    .terminal-dots {
+        display: flex;
+        gap: 8px;
+        margin-right: 12px;
+    }
+    .terminal-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28ca42; }
+    .output-line {
+        padding: 2px 0;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    .status-card {
+        transition: all 0.3s ease;
+    }
+    .status-card-light {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .status-card-light:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    .status-card-dark {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .status-card-dark:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        transform: translateY(-2px);
+    }
+    .network-card {
+        transition: all 0.3s ease;
+    }
+    .network-card-light {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.1);
+    }
+    .network-card-light:hover {
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
+        transform: translateY(-2px);
+    }
+    .network-card-dark {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .network-card-dark:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        transform: translateY(-2px);
+    }
+    .terminal-card {
+        transition: all 0.3s ease;
+    }
+    .terminal-card-light {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .terminal-card-light:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    .terminal-card-dark {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .terminal-card-dark:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        transform: translateY(-2px);
+    }
+    
+    /* ANSI colors for better terminal output */
+    .ansi2html-content {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+    
+    /* Standard ANSI color classes */
+    .ansi-black { color: #000000; }
+    .ansi-red { color: #cd0000; }
+    .ansi-green { color: #00cd00; }
+    .ansi-yellow { color: #cdcd00; }
+    .ansi-blue { color: #0000ee; }
+    .ansi-magenta { color: #cd00cd; }
+    .ansi-cyan { color: #00cdcd; }
+    .ansi-white { color: #e5e5e5; }
+    
+    /* Bright ANSI colors */
+    .ansi-bright-black { color: #7f7f7f; }
+    .ansi-bright-red { color: #ff0000; }
+    .ansi-bright-green { color: #00ff00; }
+    .ansi-bright-yellow { color: #ffff00; }
+    .ansi-bright-blue { color: #5c5cff; }
+    .ansi-bright-magenta { color: #ff00ff; }
+    .ansi-bright-cyan { color: #00ffff; }
+    .ansi-bright-white { color: #ffffff; }
+</style>
+{% endblock %}
+
+{% block page_title %}{{ instance.instance_name }}{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+        <i class="fas fa-cogs text-white text-2xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xFormation</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Device Emulation Management</p>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block content %}
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+    <div class="flex items-center space-x-4">
+        <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+            <i class="fas fa-play text-white text-2xl"></i>
+        </div>
+        <div>
+            <h1 class="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">{{ instance.instance_name }}</h1>
+            <p class="text-lg lg:text-xl text-gray-600 dark:text-gray-300 mt-1">{{ instance.device.name }} Emulation</p>
+        </div>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-3">
+        <a href="{% url 'xformation:index' %}" class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-2xl transition-all duration-300 flex items-center justify-center font-semibold transform hover:scale-105 shadow-lg hover:shadow-xl">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+        {% if instance.status == 'running' %}
+        <button onclick="toggleStopInstanceModal()" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl transition-all duration-300 flex items-center justify-center font-semibold transform hover:scale-105 shadow-lg hover:shadow-xl">
+            <i class="fas fa-stop-circle mr-2"></i>Stop Instance
+        </button>
+        {% endif %}
+    </div>
+</div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="bg-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-100 border-l-4 border-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-500 text-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-700 p-4 mb-6 rounded-md shadow-sm">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Instance Status -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Status Card -->
+                <div class="status-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden status-card-light dark:status-card-dark">
+                    <div class="p-6 text-center">
+                        <div class="flex justify-center items-center mb-4">
+                            <div class="p-3 bg-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% else %}yellow{% endif %}-100 dark:bg-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% else %}yellow{% endif %}-900/30 rounded-2xl">
+                                <i class="fas fa-{% if instance.status == 'running' %}play{% elif instance.status == 'failed' %}exclamation-triangle{% else %}clock{% endif %} text-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% else %}yellow{% endif %}-600 dark:text-{% if instance.status == 'running' %}green{% elif instance.status == 'failed' %}red{% else %}yellow{% endif %}-400 text-2xl"></i>
+                            </div>
+                        </div>
+                        <h5 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Status</h5>
+                        <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-{% if instance.status == 'running' %}green-100 text-green-800{% elif instance.status == 'failed' %}red-100 text-red-800{% else %}yellow-100 text-yellow-800{% endif %}">
+                            {{ instance.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Uptime Card -->
+                <div class="status-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden status-card-light dark:status-card-dark">
+                    <div class="p-6 text-center">
+                        <div class="flex justify-center items-center mb-4">
+                            <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl">
+                                <i class="fas fa-clock text-blue-600 dark:text-blue-400 text-2xl"></i>
+                            </div>
+                        </div>
+                        <h5 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Uptime</h5>
+                        <h3 class="text-2xl font-bold text-blue-600 dark:text-blue-400 uptime" data-started="{{ instance.started_at.isoformat }}">
+                            {{ instance.uptime_seconds|floatformat:0 }}s
+                        </h3>
+                    </div>
+                </div>
+
+                <!-- Resources Card -->
+                <div class="status-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden status-card-light dark:status-card-dark">
+                    <div class="p-6 text-center">
+                        <div class="flex justify-center items-center mb-4">
+                            <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-2xl">
+                                <i class="fas fa-cogs text-purple-600 dark:text-purple-400 text-2xl"></i>
+                            </div>
+                        </div>
+                        <h5 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Resources</h5>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-center space-x-2">
+                                <i class="fas fa-microchip text-blue-500"></i>
+                                <span class="font-medium text-gray-900 dark:text-white">{{ instance.cpu_limit }} cores</span>
+                            </div>
+                            <div class="flex items-center justify-center space-x-2">
+                                <i class="fas fa-memory text-purple-500"></i>
+                                <span class="font-medium text-gray-900 dark:text-white">{{ instance.memory_limit }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Web Interface Card -->
+                <div class="status-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden status-card-light dark:status-card-dark">
+                    <div class="p-6 text-center">
+                        <div class="flex justify-center items-center mb-4">
+                            <div class="p-3 bg-{% if instance.web_interface_status == 'accessible' %}green{% elif instance.web_interface_status == 'inaccessible' %}red{% else %}gray{% endif %}-100 dark:bg-{% if instance.web_interface_status == 'accessible' %}green{% elif instance.web_interface_status == 'inaccessible' %}red{% else %}gray{% endif %}-900/30 rounded-2xl">
+                                <i class="fas fa-globe text-{% if instance.web_interface_status == 'accessible' %}green{% elif instance.web_interface_status == 'inaccessible' %}red{% else %}gray{% endif %}-600 dark:text-{% if instance.web_interface_status == 'accessible' %}green{% elif instance.web_interface_status == 'inaccessible' %}red{% else %}gray{% endif %}-400 text-2xl"></i>
+                            </div>
+                        </div>
+                        <h5 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Web Interface</h5>
+                        {% if instance.web_interface_url %}
+                            <a href="{{ instance.web_interface_url }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all duration-200 mb-2 transform hover:scale-105">
+                                <i class="fas fa-globe mr-2"></i>Open Web UI
+                            </a>
+                            <div class="mb-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-{% if instance.web_interface_status == 'accessible' %}green-100 text-green-800{% elif instance.web_interface_status == 'inaccessible' %}red-100 text-red-800{% else %}gray-100 text-gray-800{% endif %}">
+                                    {{ instance.get_web_interface_status_display }}
+                                </span>
+                            </div>
+                            {% if instance.host_ip %}
+                            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">IP Address</p>
+                                <span class="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-semibold">
+                                    {{ instance.host_ip }}
+                                </span>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            {% if instance.host_ip %}
+                                <div class="mb-2">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">IP Address</p>
+                                    <span class="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-semibold">
+                                        {{ instance.host_ip }}
+                                    </span>
+                                </div>
+                                <span class="text-gray-500 dark:text-gray-400 text-sm">Detecting services...</span>
+                            {% else %}
+                                <span class="text-gray-500 dark:text-gray-400 text-sm">Starting up...</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Information -->
+            {% if instance.host_ports %}
+            <div class="network-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8 network-card-light dark:network-card-dark">
+                <div class="bg-gradient-to-r from-blue-500 to-cyan-600 p-6">
+                    <h3 class="text-xl font-bold text-white flex items-center">
+                        <div class="p-2 bg-white/20 rounded-lg mr-3">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        Network Services
+                    </h3>
+                    <p class="text-blue-100 mt-2">Available network services and ports</p>
+                </div>
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
+                                    <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Host IP</th>
+                                    <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Port</th>
+                                    <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Protocol</th>
+                                    <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Access</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                {% for service, port_info in instance.host_ports.items %}
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center">
+                                            <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3">
+                                                <i class="fas fa-server text-blue-600 dark:text-blue-400"></i>
+                                            </div>
+                                            <span class="text-sm font-bold text-gray-900 dark:text-white">{{ service }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm text-gray-800 dark:text-gray-200">{{ instance.host_ip }}</code>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                                            {{ port_info.port }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                            {{ port_info.protocol|upper }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        {% if port_info.port == 80 or port_info.port == 443 or port_info.port == 8080 %}
+                                            <a href="{% if port_info.port == 443 %}https{% else %}http{% endif %}://{{ instance.host_ip }}:{{ port_info.port }}" 
+                                               target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all duration-200 transform hover:scale-105">
+                                                <i class="fas fa-globe mr-2"></i>Open
+                                            </a>
+                                        {% else %}
+                                            <code class="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg text-sm text-gray-800 dark:text-gray-200">{{ instance.host_ip }}:{{ port_info.port }}</code>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+    <!-- Telemetry Section -->
+    {% if telemetry %}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                Emulation Telemetry
+            </h3>
+            <p class="text-emerald-100 mt-2">Runtime metrics collected from Penguin emulation</p>
+        </div>
+        <div class="p-6">
+            <!-- Health Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ telemetry.health_data.nproc|default:"0" }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Unique Processes</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ telemetry.health_data.nexecs|default:"0" }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Exec Calls</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ telemetry.health_data.nbound_sockets|default:"0" }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Bound Sockets</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">{{ telemetry.health_data.nsyscalls|default:"0" }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">Syscalls</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-3xl font-bold {% if telemetry.kernel_panic %}text-red-600 dark:text-red-400{% else %}text-green-600 dark:text-green-400{% endif %}">
+                        {% if telemetry.kernel_panic %}<i class="fas fa-exclamation-triangle"></i>{% else %}<i class="fas fa-check-circle"></i>{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                        {% if telemetry.kernel_panic %}Kernel Panic{% else %}No Panic{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score Summary -->
+            {% if telemetry.score_data %}
+            <div class="mb-6">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wider">Emulation Score</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {% for key, value in telemetry.score_data.items %}
+                    <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg px-4 py-2">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 capitalize">{{ key }}</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">{{ value }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Tabs for detailed data -->
+            <div x-data="{ activeTab: 'processes' }" class="mt-4">
+                <div class="flex space-x-1 border-b border-gray-200 dark:border-gray-700 mb-4">
+                    <button @click="activeTab = 'processes'" :class="activeTab === 'processes' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                        Processes ({{ telemetry.processes|length }})
+                    </button>
+                    <button @click="activeTab = 'netbinds'" :class="activeTab === 'netbinds' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                        Network Binds ({{ telemetry.network_binds|length }})
+                    </button>
+                    <button @click="activeTab = 'devices'" :class="activeTab === 'devices' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                        Devices Accessed ({{ telemetry.devices_accessed|length }})
+                    </button>
+                    <button @click="activeTab = 'shell'" :class="activeTab === 'shell' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                        Shell Coverage
+                    </button>
+                </div>
+
+                <!-- Processes Tab -->
+                <div x-show="activeTab === 'processes'" class="overflow-auto max-h-64">
+                    {% if telemetry.processes %}
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">#</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Process</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for proc in telemetry.processes %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-4 py-2 text-gray-400">{{ forloop.counter }}</td>
+                                <td class="px-4 py-2 font-mono text-gray-900 dark:text-white">{{ proc }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400 text-sm p-4">No process data available</p>
+                    {% endif %}
+                </div>
+
+                <!-- Network Binds Tab -->
+                <div x-show="activeTab === 'netbinds'" class="overflow-auto max-h-64">
+                    {% if telemetry.network_binds %}
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Process</th>
+                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Protocol</th>
+                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">IP</th>
+                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Port</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Time (s)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for bind in telemetry.network_binds %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td class="px-4 py-2 font-mono text-gray-900 dark:text-white">{{ bind.process }}</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{{ bind.protocol|upper }}</span>
+                                </td>
+                                <td class="px-4 py-2 text-center font-mono text-gray-600 dark:text-gray-400">{{ bind.guest_ip }}</td>
+                                <td class="px-4 py-2 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">{{ bind.guest_port }}</span>
+                                </td>
+                                <td class="px-4 py-2 text-right text-gray-500 dark:text-gray-400">{{ bind.time|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400 text-sm p-4">No network bind data available</p>
+                    {% endif %}
+                </div>
+
+                <!-- Devices Accessed Tab -->
+                <div x-show="activeTab === 'devices'" class="overflow-auto max-h-64">
+                    {% if telemetry.devices_accessed %}
+                    <div class="space-y-1 p-2">
+                        {% for dev in telemetry.devices_accessed %}
+                        <div class="flex items-center px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <i class="fas fa-hdd text-gray-400 mr-3"></i>
+                            <code class="text-sm text-gray-900 dark:text-white">{{ dev }}</code>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400 text-sm p-4">No device access data available</p>
+                    {% endif %}
+                </div>
+
+                <!-- Shell Coverage Tab -->
+                <div x-show="activeTab === 'shell'" class="p-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-bold text-teal-600 dark:text-teal-400">{{ telemetry.shell_coverage.lines_covered|default:"0" }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Lines Covered</div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-bold text-teal-600 dark:text-teal-400">{{ telemetry.shell_coverage.files|length|default:"0" }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Files Executed</div>
+                        </div>
+                    </div>
+                    {% if telemetry.shell_coverage.files %}
+                    <div class="mt-4 space-y-1">
+                        {% for file in telemetry.shell_coverage.files %}
+                        <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <code class="text-sm text-gray-900 dark:text-white">{{ file }}</code>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if telemetry.kernel_panic and telemetry.console_snippet %}
+            <div class="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4">
+                <h4 class="text-sm font-semibold text-red-800 dark:text-red-200 mb-2 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Kernel Panic Detected
+                </h4>
+                <pre class="text-xs text-red-700 dark:text-red-300 font-mono overflow-x-auto whitespace-pre-wrap">{{ telemetry.console_snippet }}</pre>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif not instance.is_running %}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8 p-6">
+        <div class="text-center">
+            <i class="fas fa-chart-bar text-gray-300 dark:text-gray-600 text-4xl mb-4"></i>
+            <p class="text-gray-500 dark:text-gray-400 mb-4">No telemetry data collected yet</p>
+            <a href="?collect_telemetry=1" class="inline-flex items-center px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-all duration-200">
+                <i class="fas fa-sync mr-2"></i>Collect Telemetry
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Behavior Findings Section -->
+    {% if findings %}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                Behavior Analysis Findings
+                <span class="ml-3 px-3 py-1 bg-white/20 rounded-full text-sm">{{ findings|length }}</span>
+            </h3>
+            <p class="text-amber-100 mt-2">Suspicious or notable behaviors detected during emulation</p>
+        </div>
+        <div class="p-6 space-y-4">
+            {% for finding in findings %}
+            <div class="rounded-xl border-l-4 p-4
+                {% if finding.severity == 'critical' %}border-red-500 bg-red-50 dark:bg-red-900/20
+                {% elif finding.severity == 'warning' %}border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20
+                {% else %}border-blue-500 bg-blue-50 dark:bg-blue-900/20{% endif %}">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold
+                            {% if finding.severity == 'critical' %}bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300
+                            {% elif finding.severity == 'warning' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300
+                            {% else %}bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300{% endif %}">
+                            {{ finding.get_severity_display|upper }}
+                        </span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                            <i class="fas fa-{% if finding.category == 'network' %}network-wired{% elif finding.category == 'process' %}cog{% elif finding.category == 'kernel' %}microchip{% elif finding.category == 'device' %}hdd{% else %}chart-line{% endif %} mr-1"></i>
+                            {{ finding.get_category_display }}
+                        </span>
+                    </div>
+                </div>
+                <h4 class="mt-2 text-sm font-bold text-gray-900 dark:text-white">{{ finding.title }}</h4>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ finding.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Validation Results Section -->
+    {% if validation %}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r {% if validation.overall_status == 'pass' %}from-green-500 to-emerald-600{% elif validation.overall_status == 'fail' %}from-red-500 to-rose-600{% else %}from-yellow-500 to-amber-600{% endif %} p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-{% if validation.overall_status == 'pass' %}check-circle{% elif validation.overall_status == 'fail' %}times-circle{% else %}exclamation-circle{% endif %}"></i>
+                </div>
+                Validation: {{ validation.get_overall_status_display|upper }}
+                <span class="ml-3 text-sm font-normal opacity-80">{{ validation.checks_passed }}/{{ validation.checks_total }} checks passed</span>
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Boot Check -->
+                <div class="rounded-xl p-4 text-center {% if validation.boot_check %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800{% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800{% endif %}">
+                    <i class="fas fa-{% if validation.boot_check %}check{% else %}times{% endif %}-circle text-2xl mb-2 {% if validation.boot_check %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">Boot</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ validation.check_details.boot.reason|default:"N/A" }}</div>
+                </div>
+                <!-- Services Check -->
+                <div class="rounded-xl p-4 text-center {% if validation.services_check %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800{% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800{% endif %}">
+                    <i class="fas fa-{% if validation.services_check %}check{% else %}times{% endif %}-circle text-2xl mb-2 {% if validation.services_check %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">Services</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ validation.check_details.services.reason|default:"N/A" }}</div>
+                </div>
+                <!-- Ports Check -->
+                <div class="rounded-xl p-4 text-center {% if validation.ports_check %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800{% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800{% endif %}">
+                    <i class="fas fa-{% if validation.ports_check %}check{% else %}times{% endif %}-circle text-2xl mb-2 {% if validation.ports_check %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">Ports</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ validation.check_details.ports.reason|default:"N/A" }}</div>
+                </div>
+                <!-- Shell Check -->
+                <div class="rounded-xl p-4 text-center {% if validation.shell_check %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800{% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800{% endif %}">
+                    <i class="fas fa-{% if validation.shell_check %}check{% else %}times{% endif %}-circle text-2xl mb-2 {% if validation.shell_check %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">Shell</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ validation.check_details.shell.reason|default:"N/A" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Live Output Terminal -->
+    <div class="terminal-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden terminal-card-light dark:terminal-card-dark">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 p-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-white/20 rounded-lg">
+                    <i class="fas fa-terminal text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white">Live Output</h2>
+                    <p class="text-gray-300 text-sm">Real-time penguin emulation output</p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="clearOutput()" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm rounded-xl transition-all duration-200 flex items-center transform hover:scale-105">
+                    <i class="fas fa-trash mr-2"></i>Clear
+                </button>
+                <button onclick="toggleAutoScroll()" id="autoScrollBtn" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm rounded-xl transition-all duration-200 flex items-center transform hover:scale-105">
+                    <i class="fas fa-arrow-down mr-2"></i>Auto-scroll: ON
+                </button>
+                {% if instance.output_log_path %}
+                <a href="{% url 'xformation:download_log' instance.id %}" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-xl transition-all duration-200 flex items-center transform hover:scale-105 shadow-lg">
+                    <i class="fas fa-download mr-2"></i>Download
+                </a>
+                {% endif %}
+                {% if not instance.is_running and instance.device.penguin_project_path %}
+                <a href="{% url 'xformation:export_package' instance.id %}" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-xl transition-all duration-200 flex items-center transform hover:scale-105 shadow-lg">
+                    <i class="fas fa-box mr-2"></i>Export Package
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Output tab bar -->
+        <div class="border-b border-gray-700 px-6 pt-2 bg-gray-800">
+            <nav class="flex gap-0" aria-label="Output tabs">
+                <button id="tab-penguin-output"
+                        onclick="switchOutputTab('penguin-output')"
+                        class="output-tab-btn px-4 py-2 text-sm font-medium border-b-2 border-indigo-500 text-indigo-400">
+                    Penguin Output
+                </button>
+                <button id="tab-strace-output"
+                        onclick="switchOutputTab('strace-output')"
+                        class="output-tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+                    Strace Output
+                </button>
+            </nav>
+        </div>
+
+        <!-- Penguin Output tab -->
+        <div id="content-penguin-output" class="output-tab-content">
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <div class="terminal-dot dot-red"></div>
+                        <div class="terminal-dot dot-yellow"></div>
+                        <div class="terminal-dot dot-green"></div>
+                    </div>
+                    <span class="text-gray-300 text-sm">{{ instance.instance_name }} - Penguin Output</span>
+                </div>
+                <div id="output-container" class="p-6 overflow-y-auto" style="height: 500px; background: #1e1e1e;">
+                    {% for line in recent_output %}
+                    <div class="output-line">{{ line|safe }}</div>
+                    {% endfor %}
+                    {% if not recent_output %}
+                    <div class="text-gray-500">No output yet... Waiting for penguin to start...</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Strace Output tab -->
+        <div id="content-strace-output" class="output-tab-content hidden">
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <div class="terminal-dot dot-red"></div>
+                        <div class="terminal-dot dot-yellow"></div>
+                        <div class="terminal-dot dot-green"></div>
+                    </div>
+                    <div class="flex items-center gap-4 flex-1">
+                        <span class="text-gray-300 text-sm">{{ instance.instance_name }} - Strace Output</span>
+                        {% if instance.device.config_data.telemetry_mode != 'disabled' %}
+                        <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer ml-4">
+                            <input type="checkbox" id="filter-execve" checked onchange="updateStraceFilter()"
+                                   class="text-indigo-600 rounded">
+                            Filter by execve
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if instance.device.config_data.telemetry_mode == 'disabled' %}
+                <div class="p-3 text-xs text-amber-400 bg-gray-900 border-b border-gray-700">
+                    Strace disabled — showing console output below.
+                </div>
+                {% endif %}
+                <div id="strace-container" class="p-6 overflow-y-auto" style="height: 500px; background: #1e1e1e;">
+                    <div class="text-gray-500 text-sm">Strace output will appear here once the instance starts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stop Instance Modal -->
+{% if instance.status == 'running' %}
+<div id="stopInstanceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-2xl bg-white dark:bg-gray-800">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 p-6 rounded-t-2xl">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                Stop Emulation Instance
+            </h3>
+            <p class="text-red-100 mt-2">Confirm instance termination</p>
+        </div>
+        
+        <div class="p-8">
+            <div class="text-center mb-6">
+                <div class="p-4 bg-red-100 dark:bg-red-900/30 rounded-full inline-block mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-3xl"></i>
+                </div>
+                <h4 class="text-xl font-bold text-red-800 dark:text-red-200 mb-4">
+                    Are you sure you want to stop this instance?
+                </h4>
+                <p class="text-gray-600 dark:text-gray-400">
+                    This will terminate the penguin emulation process and stop all network services.
+                </p>
+            </div>
+            
+            <!-- Instance Info -->
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 mb-6">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="font-medium text-gray-600 dark:text-gray-400">Instance:</span>
+                        <p class="font-bold text-gray-900 dark:text-white">{{ instance.instance_name }}</p>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-600 dark:text-gray-400">Device:</span>
+                        <p class="font-bold text-gray-900 dark:text-white">{{ instance.device.name }}</p>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-600 dark:text-gray-400">Status:</span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                            {{ instance.get_status_display }}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-600 dark:text-gray-400">Uptime:</span>
+                        <p class="font-bold text-gray-900 dark:text-white">{{ instance.uptime_seconds|floatformat:0 }}s</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Warning -->
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-4 mb-6">
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-info-circle text-yellow-600 dark:text-yellow-400 mt-1"></i>
+                    <div>
+                        <h5 class="font-semibold text-yellow-800 dark:text-yellow-200">Note:</h5>
+                        <p class="text-sm text-yellow-700 dark:text-yellow-300">
+                            All output logs will be preserved for later review and analysis.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <form method="post" action="{% url 'xformation:instance_detail' instance.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="stop_instance">
+                <div class="flex flex-col sm:flex-row gap-3 justify-end">
+                    <button type="button" onclick="toggleStopInstanceModal()" class="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-xl transition-all duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-red-700 focus:ring-4 focus:ring-red-200 dark:focus:ring-red-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-stop-circle mr-2"></i>Stop Instance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+let autoScroll = true;
+let lastOutputUpdate = Date.now();
+
+// Auto-scroll toggle
+function toggleAutoScroll() {
+    autoScroll = !autoScroll;
+    const btn = document.getElementById('autoScrollBtn');
+    btn.innerHTML = `<i class="fas fa-arrow-down mr-2"></i>Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+    btn.className = `px-4 py-2 ${autoScroll ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30'} text-white text-sm rounded-xl transition-all duration-200 flex items-center transform hover:scale-105`;
+}
+
+// Clear output
+function clearOutput() {
+    document.getElementById('output-container').innerHTML = '<div class="text-gray-500 dark:text-gray-400">Output cleared...</div>';
+}
+
+// Scroll to bottom
+function scrollToBottom() {
+    if (autoScroll) {
+        const container = document.getElementById('output-container');
+        container.scrollTop = container.scrollHeight;
+    }
+}
+
+// Output tab switching
+function switchOutputTab(tabName) {
+    document.querySelectorAll('.output-tab-content').forEach(function(el) {
+        el.classList.add('hidden');
+    });
+    document.querySelectorAll('.output-tab-btn').forEach(function(btn) {
+        btn.classList.remove('border-indigo-500', 'text-indigo-400');
+        btn.classList.add('border-transparent', 'text-gray-400');
+    });
+    document.getElementById('content-' + tabName).classList.remove('hidden');
+    var activeBtn = document.getElementById('tab-' + tabName);
+    activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+    activeBtn.classList.remove('border-transparent', 'text-gray-400');
+    if (tabName === 'strace-output') {
+        updateStraceFilter();
+    }
+}
+
+// Strace line detection and filter
+function getStraceLines(allLines, filterByExecve) {
+    return allLines.filter(function(line) {
+        var isStraceLine = line.includes('execve(') || line.includes('strace:') || /\d+\s+\w+\(/.test(line);
+        if (!isStraceLine) return false;
+        if (filterByExecve) return line.includes('execve(');
+        return true;
+    });
+}
+
+function updateStraceFilter() {
+    var filterCheckbox = document.getElementById('filter-execve');
+    var filterByExecve = filterCheckbox ? filterCheckbox.checked : false;
+    var straceContainer = document.getElementById('strace-container');
+    if (!straceContainer || !window._outputLines) return;
+
+    {% if instance.device.config_data.telemetry_mode == 'disabled' %}
+    // Disabled mode: show all console output
+    straceContainer.innerHTML = '';
+    (window._outputLines || []).forEach(function(line) {
+        var div = document.createElement('div');
+        div.className = 'output-line';
+        div.innerHTML = line;
+        straceContainer.appendChild(div);
+    });
+    {% else %}
+    var filtered = getStraceLines(window._outputLines || [], filterByExecve);
+    straceContainer.innerHTML = '';
+    if (filtered.length === 0) {
+        straceContainer.innerHTML = '<div class="text-gray-500 text-sm">No strace output captured yet...</div>';
+    } else {
+        filtered.forEach(function(line) {
+            var div = document.createElement('div');
+            div.className = 'output-line text-yellow-400';
+            div.textContent = line;
+            straceContainer.appendChild(div);
+        });
+    }
+    straceContainer.scrollTop = straceContainer.scrollHeight;
+    {% endif %}
+}
+
+// Update output from API
+function updateOutput() {
+    fetch(`/xformation/api/instance/{{ instance.id }}/output/?lines=100`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('output-container');
+            const currentLines = container.querySelectorAll('.output-line').length;
+
+            if (data.output.length > currentLines) {
+                // New output available — store for strace tab
+                window._outputLines = data.output;
+
+                container.innerHTML = '';
+                data.output.forEach(line => {
+                    const div = document.createElement('div');
+                    div.className = 'output-line';
+                    div.innerHTML = line;
+                    container.appendChild(div);
+                });
+                scrollToBottom();
+                lastOutputUpdate = Date.now();
+
+                // Update strace tab if it's visible
+                if (!document.getElementById('content-strace-output').classList.contains('hidden')) {
+                    updateStraceFilter();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching output:', error);
+        });
+}
+
+// Update instance status
+function updateStatus() {
+    fetch(`/xformation/api/instance/{{ instance.id }}/status/`)
+        .then(response => response.json())
+        .then(data => {
+            // Check if web interface URL or IP was detected
+            const currentUrl = "{{ instance.web_interface_url }}";
+            const currentIp = "{{ instance.host_ip }}";
+            
+            if ((data.web_interface_url && data.web_interface_url !== currentUrl) || 
+                (data.host_ip && data.host_ip !== currentIp)) {
+                location.reload(); // Reload page to show new web interface/IP
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching status:', error);
+        });
+}
+
+// Update uptime counter
+function updateUptime() {
+    const uptimeElement = document.querySelector('.uptime');
+    if (uptimeElement) {
+        const startTime = new Date(uptimeElement.dataset.started);
+        const now = new Date();
+        const uptimeSeconds = Math.floor((now - startTime) / 1000);
+        
+        const hours = Math.floor(uptimeSeconds / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        const seconds = uptimeSeconds % 60;
+        
+        if (hours > 0) {
+            uptimeElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            uptimeElement.textContent = `${minutes}m ${seconds}s`;
+        } else {
+            uptimeElement.textContent = `${seconds}s`;
+        }
+    }
+}
+
+// Detect manual scrolling
+document.getElementById('output-container').addEventListener('scroll', function() {
+    const container = this;
+    const isAtBottom = Math.abs(container.scrollHeight - container.clientHeight - container.scrollTop) < 10;
+    
+    if (!isAtBottom && autoScroll) {
+        // User scrolled up, disable auto-scroll
+        toggleAutoScroll();
+    }
+});
+
+// Initial scroll to bottom
+scrollToBottom();
+
+// Set up intervals
+setInterval(updateOutput, 2000);    // Update output every 2 seconds
+setInterval(updateStatus, 10000);   // Update status every 10 seconds
+setInterval(updateUptime, 1000);    // Update uptime every second
+
+// Initial updates
+updateUptime();
+
+// Handle dark mode class switching
+function updateDarkModeClasses() {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    
+    // Update status cards
+    const statusCards = document.querySelectorAll('.status-card');
+    statusCards.forEach(card => {
+        if (isDarkMode) {
+            card.classList.remove('status-card-light');
+            card.classList.add('status-card-dark');
+        } else {
+            card.classList.remove('status-card-dark');
+            card.classList.add('status-card-light');
+        }
+    });
+    
+    // Update network cards
+    const networkCards = document.querySelectorAll('.network-card');
+    networkCards.forEach(card => {
+        if (isDarkMode) {
+            card.classList.remove('network-card-light');
+            card.classList.add('network-card-dark');
+        } else {
+            card.classList.remove('network-card-dark');
+            card.classList.add('network-card-light');
+        }
+    });
+    
+    // Update terminal cards
+    const terminalCards = document.querySelectorAll('.terminal-card');
+    terminalCards.forEach(card => {
+        if (isDarkMode) {
+            card.classList.remove('terminal-card-light');
+            card.classList.add('terminal-card-dark');
+        } else {
+            card.classList.remove('terminal-card-dark');
+            card.classList.add('terminal-card-light');
+        }
+    });
+}
+
+// Watch for dark mode changes
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            updateDarkModeClasses();
+        }
+    });
+});
+
+// Start observing
+observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+});
+
+// Initial dark mode setup
+updateDarkModeClasses();
+
+// Stop instance modal functionality
+function toggleStopInstanceModal() {
+    const modal = document.getElementById('stopInstanceModal');
+    if (modal) {
+        modal.classList.toggle('hidden');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('stopInstanceModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        toggleStopInstanceModal();
+    }
+});
+</script>
+{% endblock %}
+
+

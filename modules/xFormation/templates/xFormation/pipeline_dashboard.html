@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pipeline Dashboard - xFormation{% endblock %}
+
+{% block extra_head %}
+<style>
+    .pipeline-row { transition: background-color 0.2s ease; }
+    .pipeline-row:hover { background-color: rgba(59, 130, 246, 0.05); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: #22c55e; }
+    .dot-yellow { background: #eab308; }
+    .dot-red { background: #ef4444; }
+    .dot-gray { background: #9ca3af; }
+    .dot-blue { background: #3b82f6; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+{% endblock %}
+
+{% block page_title %}Pipeline Dashboard{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+        <i class="fas fa-stream text-white text-2xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Pipeline Dashboard</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">End-to-end firmware emulation pipeline status</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="bg-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-100 border-l-4 border-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-500 text-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-700 p-4 mb-6 rounded-md shadow-sm">
+            <p>{{ message }}</p>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 text-center">
+            <div class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_firmware }}</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Firmware</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 text-center">
+            <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                {% with count=0 %}{% for item in pipeline_data %}{% if item.extraction_status == 'complete' %}{% with count=count|add:"1" %}{% endwith %}{% endif %}{% endfor %}{% endwith %}
+                {{ pipeline_data|length }}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Extracted</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 text-center">
+            <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {% for item in pipeline_data %}{% if item.init_status == 'initialized' %}{% endif %}{% endfor %}
+                -
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Initialized</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 text-center">
+            <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                {% for item in pipeline_data %}{% if item.validation_status == 'pass' %}{% endif %}{% endfor %}
+                -
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Validated</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="flex items-center justify-between mb-6">
+        <a href="{% url 'xformation:index' %}" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-xl transition-all duration-200 flex items-center text-sm font-medium">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Pipeline Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-stream"></i>
+                </div>
+                Firmware Pipeline Status
+            </h3>
+            <p class="text-indigo-100 mt-2">Track each firmware through the processing pipeline</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Firmware</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Extraction</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Init</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Emulation</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Validation</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Findings</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for item in pipeline_data %}
+                    <tr class="pipeline-row" id="pipeline-row-{{ item.firmware.id }}">
+                        <!-- Firmware Info -->
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="ml-2">
+                                    <div class="text-sm font-bold text-gray-900 dark:text-white">
+                                        {{ item.firmware.model.manufacturer.name }} {{ item.firmware.model.model_number }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">v{{ item.firmware.version }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Extraction Status -->
+                        <td class="px-4 py-4 text-center">
+                            {% if item.extraction_status == 'complete' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    <span class="status-dot dot-green mr-1.5"></span>Done
+                                </span>
+                            {% elif item.pipeline_running and item.pipeline_stage == 'extraction' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                    <span class="status-dot dot-blue mr-1.5"></span>Running
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <span class="status-dot dot-gray mr-1.5"></span>Pending
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Init Status -->
+                        <td class="px-4 py-4 text-center">
+                            {% if item.init_status == 'initialized' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    <span class="status-dot dot-green mr-1.5"></span>Done
+                                </span>
+                            {% elif item.init_status == 'initializing' or item.pipeline_stage == 'initialization' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                    <span class="status-dot dot-blue mr-1.5"></span>Running
+                                </span>
+                            {% elif item.init_status == 'init_failed' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                    <span class="status-dot dot-red mr-1.5"></span>Failed
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <span class="status-dot dot-gray mr-1.5"></span>Pending
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Emulation Status -->
+                        <td class="px-4 py-4 text-center">
+                            {% if item.emulation_status == 'running' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                    <span class="status-dot dot-blue mr-1.5"></span>Running
+                                </span>
+                            {% elif item.emulation_status == 'stopped' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    <span class="status-dot dot-green mr-1.5"></span>Done
+                                </span>
+                            {% elif item.emulation_status == 'failed' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                    <span class="status-dot dot-red mr-1.5"></span>Failed
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <span class="status-dot dot-gray mr-1.5"></span>Pending
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Validation Status -->
+                        <td class="px-4 py-4 text-center">
+                            {% if item.validation_status == 'pass' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    <span class="status-dot dot-green mr-1.5"></span>Pass
+                                </span>
+                            {% elif item.validation_status == 'fail' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                    <span class="status-dot dot-red mr-1.5"></span>Fail
+                                </span>
+                            {% elif item.validation_status == 'partial' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                    <span class="status-dot dot-yellow mr-1.5"></span>Partial
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                    <span class="status-dot dot-gray mr-1.5"></span>N/A
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Findings -->
+                        <td class="px-4 py-4 text-center">
+                            {% if item.findings_count > 0 %}
+                                <div class="flex items-center justify-center space-x-1">
+                                    {% if item.findings_critical > 0 %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">{{ item.findings_critical }}C</span>
+                                    {% endif %}
+                                    {% if item.findings_warning > 0 %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">{{ item.findings_warning }}W</span>
+                                    {% endif %}
+                                    <span class="text-xs text-gray-500">({{ item.findings_count }})</span>
+                                </div>
+                            {% else %}
+                                <span class="text-xs text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                {% if item.pipeline_running %}
+                                    <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>{{ item.pipeline_stage }}
+                                    </span>
+                                {% else %}
+                                    <form method="post" action="{% url 'xformation:pipeline_run' item.firmware.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium rounded-lg transition-all duration-200" title="Run full pipeline">
+                                            <i class="fas fa-play mr-1"></i>Run
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                {% if item.instance %}
+                                    <a href="{% url 'xformation:instance_detail' item.instance.id %}" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg transition-all duration-200" title="View instance">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                {% endif %}
+
+                                {% if item.device %}
+                                    <a href="{% url 'xformation:device_detail' item.device.id %}" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg transition-all duration-200" title="View device">
+                                        <i class="fas fa-server"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-inbox text-4xl mb-4"></i>
+                            <p>No firmware uploaded yet. Upload firmware in xQuire to begin.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function pollPipelineStatuses() {
+    {% for item in pipeline_data %}
+    {% if item.pipeline_running %}
+    fetch("{% url 'xformation:api_pipeline_status' item.firmware.id %}")
+        .then(r => r.json())
+        .then(data => {
+            if (!data.running) {
+                location.reload();
+            }
+        })
+        .catch(() => {});
+    {% endif %}
+    {% endfor %}
+}
+
+setInterval(pollPipelineStatuses, 5000);
+</script>
+{% endblock %}

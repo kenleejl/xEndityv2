@@ -1,0 +1,572 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ module_name }} - {{ module_description }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .device-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e5e7eb;
+    }
+    .device-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        border-color: #3b82f6;
+    }
+    .instance-row {
+        transition: background-color 0.2s ease;
+    }
+    .instance-row:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}xFormation Dashboard{% endblock %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+        <i class="fas fa-cogs text-white text-2xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ module_name }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ module_description }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+    {% if messages %}
+        {% for message in messages %}
+            <div class="bg-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-100 border-l-4 border-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-500 text-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-700 p-4 mb-6 rounded-md shadow-sm">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Toggle Control -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-6">
+        <div class="p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">View Options</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Configure what firmware to display</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="showAllToggle" class="sr-only" {% if show_without_rootfs %}checked{% endif %}>
+                        <div class="relative">
+                            <div class="block bg-gray-300 w-14 h-8 rounded-full"></div>
+                            <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {% if show_without_rootfs %}translate-x-6 bg-blue-500{% endif %}"></div>
+                        </div>
+                        <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Show firmware without rootfs.tar.gz 
+                            <span class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full ml-1">
+                                {{ firmware_without_rootfs_count }}
+                            </span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Penguin Status Card -->
+        <div class="stat-card group bg-gradient-to-br from-{% if penguin_available %}green-500 to-green-600{% else %}red-500 to-red-600{% endif %} rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-{% if penguin_available %}check-circle{% else %}times-circle{% endif %} text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-{% if penguin_available %}green{% else %}red{% endif %}-100 text-sm font-medium">Penguin Status</p>
+                    <p class="text-lg font-bold">{% if penguin_available %}Available{% else %}Not Available{% endif %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Running Instances Card -->
+        <div class="stat-card group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-play-circle text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-blue-100 text-sm font-medium">Running Instances</p>
+                    <p class="text-4xl font-bold">{{ running_count }}/{{ max_instances }}</p>
+                </div>
+            </div>
+            <div class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Active Emulations</span>
+            </div>
+        </div>
+
+        <!-- Available Devices Card -->
+        <div class="stat-card group bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-microchip text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-indigo-100 text-sm font-medium">Available Devices</p>
+                    <p class="text-4xl font-bold">{{ available_devices.count }}</p>
+                </div>
+            </div>
+            <div class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Ready to Initialize</span>
+            </div>
+        </div>
+
+        <!-- Initialized Devices Card -->
+        <div class="stat-card group bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-emerald-100 text-sm font-medium">Initialized Devices</p>
+                    <p class="text-4xl font-bold">{{ initialized_devices.count }}</p>
+                </div>
+            </div>
+            <div class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Ready to Run</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Running Instances -->
+    {% if running_instances %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 p-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-play-circle text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Running Instances</h2>
+            </div>
+            <span class="px-3 py-1 bg-white/20 text-white text-sm rounded-lg">
+                {{ running_instances|length }} active
+            </span>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Instance Name</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Device</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Web Interface</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Uptime</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for instance in running_instances %}
+                    <tr class="instance-row">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-play text-green-600 dark:text-green-300"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                        <a href="{% url 'xformation:instance_detail' instance.id %}" class="hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ instance.instance_name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        CPU: {{ instance.cpu_limit }} cores • RAM: {{ instance.memory_limit }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ instance.device.name }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ instance.device.firmware.model.manufacturer.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="status-badge bg-green-100 text-green-800">{{ instance.get_status_display }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if instance.web_interface_url %}
+                                <a href="{{ instance.web_interface_url }}" target="_blank" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors">
+                                    <i class="fas fa-globe mr-1"></i> Open Web UI
+                                </a>
+                                <div class="mt-1">
+                                    <span class="status-badge bg-{% if instance.web_interface_status == 'accessible' %}green-100 text-green-800{% else %}yellow-100 text-yellow-800{% endif %}">
+                                        {{ instance.get_web_interface_status_display }}
+                                    </span>
+                                </div>
+                                {% if instance.host_ip %}
+                                <div class="mt-1">
+                                    <span class="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                        {{ instance.host_ip }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                {% if instance.host_ip %}
+                                    <span class="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                        {{ instance.host_ip }}
+                                    </span>
+                                    <div class="mt-1">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">Detecting services...</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">Starting up...</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="uptime text-sm font-medium text-gray-900 dark:text-white" data-started="{{ instance.started_at.isoformat }}">
+                                {{ instance.uptime_seconds|floatformat:0 }}s
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <a href="{% url 'xformation:instance_detail' instance.id %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200" title="View details">
+                                    <i class="fas fa-eye text-lg"></i>
+                                </a>
+                                <a href="{% url 'xformation:instance_detail' instance.id %}" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200" title="View instance">
+                                    <i class="fas fa-stop-circle text-lg"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Initialized Devices -->
+    {% if initialized_devices %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                Initialized Devices
+                <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                    {{ initialized_devices|length }} ready
+                </span>
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for device in initialized_devices %}
+                <div class="device-card group bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-xl p-6 border border-emerald-200 dark:border-emerald-700 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-start space-x-4 mb-4">
+                        <div class="p-3 bg-emerald-500 rounded-xl shadow-lg">
+                            <i class="fas fa-microchip text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ device.name }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ device.firmware.model.manufacturer.name }} {{ device.firmware.model.model_number }}</p>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-tag mr-2"></i>
+                                    Version: {{ device.firmware.version }}
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-play mr-2"></i>
+                                    Running: {{ device.running_instances_count }} instances
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        {% if can_start_more %}
+                        <a href="{% url 'xformation:device_detail' device.id %}" class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors duration-200">
+                            <i class="fas fa-play mr-2"></i>Run
+                        </a>
+                        {% else %}
+                        <button disabled class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed" title="Maximum instances reached">
+                            <i class="fas fa-play mr-2"></i>Run
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'xformation:device_detail' device.id %}" class="px-4 py-2 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/20 font-medium rounded-lg transition-colors duration-200">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Available Devices -->
+    {% if available_devices %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                Available Devices
+                <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                    {{ available_devices|length }} discovered
+                </span>
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for device in available_devices %}
+                <div class="device-card group bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-700 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-start space-x-4 mb-4">
+                        <div class="p-3 bg-indigo-500 rounded-xl shadow-lg">
+                            <i class="fas fa-microchip text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ device.name }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ device.firmware.model.manufacturer.name }} {{ device.firmware.model.model_number }}</p>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-tag mr-2"></i>
+                                    Version: {{ device.firmware.version }}
+                                </div>
+                                <div class="mt-2">
+                                    <span class="status-badge bg-indigo-100 text-indigo-800">{{ device.get_initialization_status_display }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{% url 'xformation:device_initialize' device.id %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors duration-200">
+                        <i class="fas fa-cog mr-2"></i>Initialize
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Initializing Devices -->
+    {% if initializing_devices %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+                Initializing Devices
+                <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                    {{ initializing_devices|length }} in progress
+                </span>
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for device in initializing_devices %}
+                <div class="device-card group bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-6 border border-yellow-200 dark:border-yellow-700">
+                    <div class="flex items-start space-x-4 mb-4">
+                        <div class="p-3 bg-yellow-500 rounded-xl shadow-lg">
+                            <i class="fas fa-sync-alt text-white text-xl animate-spin"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ device.name }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ device.firmware.model.manufacturer.name }} {{ device.firmware.model.model_number }}</p>
+                            <div class="mt-2">
+                                <span class="status-badge bg-yellow-100 text-yellow-800">{{ device.get_initialization_status_display }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-yellow-500 h-2 rounded-full animate-pulse" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    <a href="{% url 'xformation:device_detail' device.id %}" class="w-full inline-flex items-center justify-center px-4 py-2 border border-yellow-300 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-600 dark:text-yellow-400 dark:hover:bg-yellow-900/20 font-medium rounded-lg transition-colors duration-200">
+                        <i class="fas fa-eye mr-2"></i>View Progress
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Failed Devices -->
+    {% if failed_devices %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                Failed Devices
+                <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                    {{ failed_devices|length }} failed
+                </span>
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for device in failed_devices %}
+                <div class="device-card group bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-6 border border-red-200 dark:border-red-700">
+                    <div class="flex items-start space-x-4 mb-4">
+                        <div class="p-3 bg-red-500 rounded-xl shadow-lg">
+                            <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ device.name }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ device.firmware.model.manufacturer.name }} {{ device.firmware.model.model_number }}</p>
+                            <div class="mt-2">
+                                <span class="status-badge bg-red-100 text-red-800">{{ device.get_initialization_status_display }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="{% url 'xformation:device_detail' device.id %}" class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors duration-200">
+                            <i class="fas fa-redo mr-2"></i>Retry
+                        </a>
+                        <a href="{% url 'xformation:device_detail' device.id %}" class="px-4 py-2 border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900/20 font-medium rounded-lg transition-colors duration-200">
+                            <i class="fas fa-bug"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Firmware Without Rootfs (when toggle is enabled) -->
+    {% if show_without_rootfs and firmware_without_rootfs %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-orange-500 to-red-600 p-6">
+            <h3 class="text-xl font-bold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                Firmware Without Root Filesystem
+                <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                    {{ firmware_without_rootfs|length }} need extraction
+                </span>
+            </h3>
+            <p class="text-orange-100 mt-2">These firmware files need to be extracted first using xScout</p>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for firmware in firmware_without_rootfs %}
+                <div class="device-card group bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-900/20 dark:to-red-800/20 rounded-xl p-6 border border-orange-200 dark:border-orange-700 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-start space-x-4 mb-4">
+                        <div class="p-3 bg-orange-500 rounded-xl shadow-lg">
+                            <i class="fas fa-file-archive text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ firmware.model.manufacturer.name }} {{ firmware.model.model_number }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Version: {{ firmware.version }}</p>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-calendar mr-2"></i>
+                                    Uploaded: {{ firmware.upload_date|date:"Y-m-d" }}
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-hdd mr-2"></i>
+                                    Size: {{ firmware.file.size|filesizeformat }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="{% url 'xscout:index' %}" class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors duration-200">
+                            <i class="fas fa-search mr-2"></i>Extract with xScout
+                        </a>
+                        <button class="px-4 py-2 border border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-900/20 font-medium rounded-lg transition-colors duration-200" 
+                                title="Firmware details">
+                            <i class="fas fa-info"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No devices found -->
+    {% if not available_devices and not initialized_devices and not initializing_devices and not failed_devices and not firmware_without_rootfs %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        <div class="p-12 text-center">
+            <div class="flex flex-col items-center">
+                <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl mb-4">
+                    <i class="fas fa-microchip text-gray-400 text-3xl"></i>
+                </div>
+                <h4 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Firmware Found</h4>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">No firmware files found in the system. Please upload and extract firmware using xScout first.</p>
+                <a href="{% url 'xscout:index' %}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105">
+                    <i class="fas fa-arrow-left mr-2"></i>Go to xScout
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Toggle functionality for showing firmware without rootfs
+document.getElementById('showAllToggle').addEventListener('change', function() {
+    const currentUrl = new URL(window.location);
+    if (this.checked) {
+        currentUrl.searchParams.set('show_all', 'true');
+    } else {
+        currentUrl.searchParams.delete('show_all');
+    }
+    window.location.href = currentUrl.toString();
+});
+
+// Auto-refresh page every 30 seconds
+setTimeout(() => {
+    location.reload();
+}, 30000);
+
+// Update uptime counters
+function updateUptimes() {
+    document.querySelectorAll('.uptime').forEach(element => {
+        const startTime = new Date(element.dataset.started);
+        const now = new Date();
+        const uptimeSeconds = Math.floor((now - startTime) / 1000);
+        
+        const hours = Math.floor(uptimeSeconds / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        const seconds = uptimeSeconds % 60;
+        
+        if (hours > 0) {
+            element.textContent = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            element.textContent = `${minutes}m ${seconds}s`;
+        } else {
+            element.textContent = `${seconds}s`;
+        }
+    });
+}
+
+// Update uptimes every second
+setInterval(updateUptimes, 1000);
+updateUptimes(); // Initial update
+</script>
+{% endblock %}

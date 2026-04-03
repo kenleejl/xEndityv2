@@ -1,0 +1,609 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit {{ device.name }} Configuration{% endblock %}
+
+{% block extra_head %}
+<style>
+    .yaml-editor {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        border-radius: 0.5rem;
+        height: 500px;
+        resize: vertical;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Back Buttons -->
+    <div class="mb-6 flex gap-3">
+        <a href="{% url 'xformation:device_detail' device.id %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200">
+            <i class="fas fa-arrow-left mr-2"></i> Back to Device
+        </a>
+        <a href="{% url 'xformation:device_initialize' device.id %}" 
+           class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors duration-200">
+            <i class="fas fa-redo mr-2"></i> Re-initialize
+        </a>
+    </div>
+
+    <!-- Header Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-edit mr-3 text-indigo-500"></i> 
+            Configuration Editor
+        </h2>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">
+            {{ device.name }} - Post-initialization configuration
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: YAML Editors (2/3 width) -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- YAML Tabs -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="border-b border-gray-200 dark:border-gray-700">
+                    <nav class="flex -mb-px">
+                        <button onclick="showTab('config')" id="tab-config"
+                                class="tab-button active px-6 py-3 text-sm font-medium border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400">
+                            config.yaml
+                        </button>
+                        <button onclick="showTab('manual')" id="tab-manual"
+                                class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                            manual.yaml
+                        </button>
+
+                        <!-- base.yaml -->
+                        <button onclick="showTab('base')" id="tab-base"
+                                class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                            base.yaml
+                        </button>
+
+                        <!-- NAT Script -->
+                        <button onclick="showTab('nat')" id="tab-nat"
+                                class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                            NAT Script
+                        </button>
+
+                        <!-- Strace Script -->
+                        <button onclick="showTab('strace')" id="tab-strace"
+                                class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                            Strace Script
+                        </button>
+
+                        <button onclick="showTab('custom_init')" id="tab-custom_init"
+                                class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300">
+                            Custom Init
+                        </button>
+                    </nav>
+                </div>
+                
+                <div class="p-6">
+                    <!-- config.yaml Tab -->
+                    <div id="content-config" class="tab-content">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_config">
+                            <textarea name="config_yaml" class="yaml-editor w-full p-4 rounded">{{ config_yaml }}</textarea>
+                            <button type="submit" 
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save config.yaml
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- manual.yaml Tab -->
+                    <div id="content-manual" class="tab-content hidden">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_manual">
+                            <textarea name="manual_yaml" class="yaml-editor w-full p-4 rounded">{{ manual_yaml }}</textarea>
+                            <button type="submit"
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save manual.yaml
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- base.yaml Tab -->
+                    <div id="content-base" class="tab-content hidden">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_base">
+                            <textarea name="base_yaml" class="yaml-editor w-full p-4 rounded">{{ base_yaml }}</textarea>
+                            <button type="submit"
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save base.yaml
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- NAT Script Tab -->
+                    <div id="content-nat" class="tab-content hidden">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_nat">
+                            <textarea name="nat_script" class="yaml-editor w-full p-4 rounded">{{ nat_script }}</textarea>
+                            <button type="submit"
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save NAT Script
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Strace Script Tab -->
+                    <div id="content-strace" class="tab-content hidden">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_strace">
+                            <textarea name="strace_script" class="yaml-editor w-full p-4 rounded">{{ strace_script }}</textarea>
+                            <button type="submit"
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save Strace Script
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Custom Init Tab -->
+                    <div id="content-custom_init" class="tab-content hidden">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="save_custom_init">
+                            <!-- Hidden input carries toggle state — JS keeps this synced with checkbox -->
+                            <input type="hidden" name="custom_init_enabled" id="custom_init_enabled_input" value="{{ custom_init_enabled|yesno:'true,false' }}">
+
+                            <!-- Toggle switch + status label -->
+                            <div class="flex items-center mb-4">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="custom_init_enabled_toggle" class="sr-only peer"
+                                           {% if custom_init_enabled %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+                                                dark:bg-gray-700 peer-checked:after:translate-x-full
+                                                peer-checked:after:border-white after:content-[''] after:absolute
+                                                after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300
+                                                after:border after:rounded-full after:h-5 after:w-5 after:transition-all
+                                                dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                    <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                          id="custom_init_toggle_label">
+                                        Custom init: {% if custom_init_enabled %}ENABLED{% else %}DISABLED{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+
+                            <!-- Injection mode selector -->
+                            <div class="mb-4 {% if not custom_init_enabled %}opacity-50 pointer-events-none{% endif %}" id="init-mode-section">
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Injection Mode
+                                </label>
+                                <div class="flex flex-col gap-2">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="init_mode" value="partial_stub"
+                                               {% if editor_init_mode == 'partial_stub' or not editor_init_mode %}checked{% endif %}
+                                               class="text-indigo-600 focus:ring-indigo-500">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <strong>Partial stub</strong> — static_files overlay only
+                                        </span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="init_mode" value="full_stub"
+                                               {% if editor_init_mode == 'full_stub' %}checked{% endif %}
+                                               class="text-indigo-600 focus:ring-indigo-500">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <strong>Full stub</strong> — redirects igloo_init to your script
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Stub path -->
+                            <div class="mb-4 {% if not custom_init_enabled %}opacity-50 pointer-events-none{% endif %}" id="stub-path-section">
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Stub path
+                                </label>
+                                <input type="text" name="stub_path"
+                                       value="{{ editor_stub_path|default:'/igloo/custom_init.sh' }}"
+                                       class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Guest filesystem path where the script is placed via static overlay.
+                                </p>
+                            </div>
+
+                            <!-- Wrapper binary path -->
+                            <div class="mb-4 {% if not custom_init_enabled %}opacity-50 pointer-events-none{% endif %}" id="wrapper-path-section">
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Original binary path <span class="font-normal text-gray-400">(optional)</span>
+                                </label>
+                                <input type="text" name="wrapper_original_path"
+                                       value="{{ editor_wrapper_original_path|default:'' }}"
+                                       placeholder="/sbin/init"
+                                       class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Original binary to make accessible at &lt;stub_path&gt;.real for wrapper scripts.
+                                </p>
+                            </div>
+
+                            <!-- Action buttons row: Use template | Load from file -->
+                            <div class="flex items-center gap-2 mb-3">
+                                <button type="button" id="custom_init_use_template_btn"
+                                        class="custom-init-action-btn inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200">
+                                    <i class="fas fa-file-alt mr-2"></i> Use template
+                                </button>
+                                <input type="file" id="custom_init_file_input" accept=".sh,.txt" class="hidden">
+                                <button type="button" id="custom_init_load_file_btn"
+                                        class="custom-init-action-btn inline-flex items-center px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors duration-200">
+                                    <i class="fas fa-folder-open mr-2"></i> Load from file
+                                </button>
+                            </div>
+
+                            <!-- Template content injection (XSS-safe via json_script) -->
+                            {{ custom_init_template|json_script:"custom-init-editor-template-data" }}
+
+                            <!-- Script textarea — pre-populated if file exists, placeholder shows skeleton ghost text -->
+                            <textarea name="custom_init" id="custom_init_editor_textarea"
+                                      class="yaml-editor w-full p-4 rounded"
+                                      placeholder="#!/bin/sh&#10;# Custom init script — runs before original device init&#10;&#10;# Mount filesystems, start services, then exec firmware init&#10;# exec /path/to/firmware/init">{{ custom_init }}</textarea>
+
+                            <!-- Save button -->
+                            <button type="submit" id="custom_init_save_btn"
+                                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Save Custom Init
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Initialization Log -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <button onclick="toggleLog()" 
+                        class="w-full px-6 py-3 text-left font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                    <span class="flex items-center">
+                        <i class="fas fa-terminal mr-2 text-indigo-500"></i> Initialization Log
+                    </span>
+                    <i id="log-chevron" class="fas fa-chevron-down transition-transform duration-200"></i>
+                </button>
+                <div id="init-log" class="hidden p-6">
+                    <div class="bg-gray-100 dark:bg-gray-900 rounded-lg p-4 overflow-auto max-h-96 font-mono text-sm whitespace-pre-wrap text-gray-800 dark:text-gray-200">{{ init_log|safe }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Actions & Info (1/3 width) -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h5 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <i class="fas fa-rocket mr-2 text-indigo-500"></i> Quick Actions
+                </h5>
+
+                <!-- Try Boot -->
+                <button type="button" onclick="toggleTryBootModal()" class="block w-full mb-3 group">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg p-4 text-white transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <h6 class="font-semibold flex items-center justify-center mb-1">
+                            <i class="fas fa-play-circle mr-2"></i> Try Boot
+                        </h6>
+                        <p class="text-sm text-blue-100">
+                            Test your configuration by starting an instance
+                        </p>
+                    </div>
+                </button>
+
+                <!-- Download Project -->
+                <a href="{% url 'xformation:download_project' device.id %}" 
+                   class="block mb-3 group">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg p-4 text-white transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <h6 class="font-semibold flex items-center mb-1">
+                            <i class="fas fa-download mr-2"></i> Download Project
+                        </h6>
+                        <p class="text-sm text-green-100">
+                            Export complete penguin project as tar.gz
+                        </p>
+                    </div>
+                </a>
+
+                <!-- Reconfigure -->
+                <a href="{% url 'xformation:device_initialize' device.id %}" 
+                   class="block group">
+                    <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 rounded-lg p-4 text-white transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <h6 class="font-semibold flex items-center mb-1">
+                            <i class="fas fa-redo mr-2"></i> Reconfigure
+                        </h6>
+                        <p class="text-sm text-yellow-100">
+                            Start initialization over with new settings
+                        </p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Launch Settings -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h5 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <i class="fas fa-sliders-h mr-2 text-indigo-500"></i> Launch Settings
+                </h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_settings">
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Telemetry Mode
+                        </label>
+                        <select name="telemetry_mode"
+                                class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="filtered" {% if telemetry_mode == 'filtered' %}selected{% endif %}>
+                                Filtered (execve only — default)
+                            </option>
+                            <option value="full" {% if telemetry_mode == 'full' %}selected{% endif %}>
+                                Full (all syscalls)
+                            </option>
+                            <option value="disabled" {% if telemetry_mode == 'disabled' %}selected{% endif %}>
+                                Disabled
+                            </option>
+                        </select>
+                        {% if telemetry_mode == 'full' %}
+                        <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                            Full strace traces every syscall — expect significant performance impact.
+                        </p>
+                        {% endif %}
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">
+                        Save Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Device Info -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                <h5 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-indigo-500"></i> Device Info
+                </h5>
+                <dl class="space-y-3 text-sm">
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400 mb-1">Status:</dt>
+                        <dd>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if device.initialization_status == 'initialized' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% elif device.initialization_status == 'initializing' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% elif device.initialization_status == 'init_failed' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                                {{ device.get_initialization_status_display }}
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400 mb-1">Project Path:</dt>
+                        <dd class="text-gray-900 dark:text-white font-mono text-xs break-all">
+                            {{ device.penguin_project_path|default:'N/A' }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400 mb-1">Config Path:</dt>
+                        <dd class="text-gray-900 dark:text-white font-mono text-xs break-all">
+                            {{ device.config_yaml_path|default:'N/A' }}
+                        </dd>
+                    </div>
+
+                    {% if device.config_data %}
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400 mb-1">SSH Password:</dt>
+                        <dd>
+                            <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-900 dark:text-white">
+                                {{ device.config_data.credentials.password|default:'root' }}
+                            </code>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400 mb-1">Network Mode:</dt>
+                        <dd class="text-gray-900 dark:text-white font-semibold">
+                            {{ device.config_data.network.mode|default:'ipam'|upper }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active', 'border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+        button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+    });
+    
+    // Show selected tab content
+    document.getElementById('content-' + tabName).classList.remove('hidden');
+    
+    // Add active class to selected tab
+    const activeTab = document.getElementById('tab-' + tabName);
+    activeTab.classList.add('active', 'border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+    activeTab.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+}
+
+function toggleLog() {
+    const logDiv = document.getElementById('init-log');
+    const chevron = document.getElementById('log-chevron');
+    
+    if (logDiv.classList.contains('hidden')) {
+        logDiv.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+    } else {
+        logDiv.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+    }
+}
+
+function toggleTryBootModal() {
+    const modal = document.getElementById('tryBootModal');
+    modal.classList.toggle('hidden');
+}
+
+// --- Custom Init Tab JS ---
+(function() {
+    const toggle = document.getElementById('custom_init_enabled_toggle');
+    const hiddenInput = document.getElementById('custom_init_enabled_input');
+    const textarea = document.getElementById('custom_init_editor_textarea');
+    const actionButtons = document.querySelectorAll('.custom-init-action-btn');
+    const toggleLabel = document.getElementById('custom_init_toggle_label');
+    const fileInput = document.getElementById('custom_init_file_input');
+    const loadFileBtn = document.getElementById('custom_init_load_file_btn');
+
+    if (!toggle) return; // Guard: tab not present
+
+    const templateDataEl = document.getElementById('custom-init-editor-template-data');
+    const CUSTOM_INIT_TEMPLATE = templateDataEl
+        ? JSON.parse(templateDataEl.textContent)
+        : '';
+
+    function loadInitContent(content, sourceName) {
+        if (textarea.value.trim()) {
+            if (!confirm('Replace current content with ' + sourceName + '?')) return;
+        }
+        textarea.value = content;
+    }
+
+    function applyToggleState(enabled) {
+        hiddenInput.value = enabled ? 'true' : 'false';
+        toggleLabel.textContent = 'Custom init: ' + (enabled ? 'ENABLED' : 'DISABLED');
+        textarea.disabled = !enabled;
+        actionButtons.forEach(function(btn) {
+            btn.disabled = !enabled;
+            if (!enabled) {
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+        if (!enabled) {
+            textarea.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            textarea.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    // Apply initial state on page load
+    applyToggleState(toggle.checked);
+
+    toggle.addEventListener('change', function() {
+        applyToggleState(toggle.checked);
+    });
+
+    // "Use template" button
+    const useTemplateBtn = document.getElementById('custom_init_use_template_btn');
+    if (useTemplateBtn) {
+        useTemplateBtn.addEventListener('click', function() {
+            loadInitContent(CUSTOM_INIT_TEMPLATE, 'skeleton template');
+        });
+    }
+
+    // "Load from file" button triggers hidden file input
+    if (loadFileBtn && fileInput) {
+        loadFileBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                loadInitContent(e.target.result, 'loaded file');
+            };
+            reader.readAsText(file);
+            fileInput.value = '';
+        });
+    }
+})();
+</script>
+
+<!-- Try Boot Modal -->
+<div id="tryBootModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-2xl bg-white dark:bg-gray-800">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-t-2xl">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+                <i class="fas fa-play-circle mr-3"></i>
+                Start Test Instance
+            </h3>
+            <p class="text-blue-100 mt-2">Configure resources for your test boot</p>
+        </div>
+        
+        <div class="p-6">
+            <form method="post" action="{% url 'xformation:device_detail' device.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="start_instance">
+                
+                <div class="space-y-6">
+                    <!-- Instance Name -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <i class="fas fa-tag mr-2 text-indigo-500"></i>Instance Name
+                        </label>
+                        <input type="text" 
+                               name="instance_name" 
+                               value="{{ device.name }}_test"
+                               class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white"
+                               required>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">A descriptive name for this test instance</p>
+                    </div>
+                    
+                    <!-- CPU Limit -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <i class="fas fa-microchip mr-2 text-indigo-500"></i>CPU Cores
+                        </label>
+                        <select name="cpu_limit" 
+                                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white">
+                            <option value="1.0">1 Core</option>
+                            <option value="2.0" selected>2 Cores (Recommended)</option>
+                            <option value="4.0">4 Cores</option>
+                            <option value="8.0">8 Cores</option>
+                        </select>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Number of CPU cores allocated to the instance</p>
+                    </div>
+                    
+                    <!-- Memory Limit -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <i class="fas fa-memory mr-2 text-indigo-500"></i>Memory (RAM)
+                        </label>
+                        <select name="memory_limit" 
+                                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white">
+                            <option value="512m">512 MB</option>
+                            <option value="1g">1 GB</option>
+                            <option value="2g" selected>2 GB (Recommended)</option>
+                            <option value="4g">4 GB</option>
+                            <option value="8g">8 GB</option>
+                        </select>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Amount of RAM allocated to the instance</p>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex flex-col sm:flex-row gap-3 justify-end mt-8">
+                    <button type="button" 
+                            onclick="toggleTryBootModal()" 
+                            class="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-xl transition-all duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-play-circle mr-2"></i>Start Instance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

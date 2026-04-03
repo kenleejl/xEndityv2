@@ -1,0 +1,6 @@
+[submodule "modules/xfs"]
+	path = modules/xfs
+	url = https://github.com/LightningGod7/xfs.git
+[submodule "modules/xFormation/penguin"]
+	path = modules/xFormation/penguin
+	url = https://github.com/LightningGod7/penguin.git

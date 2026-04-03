@@ -1,0 +1,697 @@
+{% extends 'base.html' %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<style>
+    .console-output {
+        background-color: #1a1a1a;
+        color: #e5e7eb;
+        font-family: 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        height: 200px;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+        border: 1px solid #374151;
+    }
+    .console-line {
+        margin: 0;
+        padding: 2px 0;
+        line-height: 1.4;
+    }
+    .progress-wrapper {
+        position: relative;
+    }
+    .progress-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        line-height: 2rem;
+        font-weight: 600;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Directory Tree Styles */
+    .tree {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+        line-height: 1.4;
+    }
+    
+    .tree ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .tree-node {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .tree-children {
+        display: block;
+        margin-left: 2rem !important;
+        padding-left: 1rem !important;
+    }
+    
+    .tree-children.collapsed {
+        display: none;
+    }
+    
+    .toggle-btn {
+        background: none;
+        border: none;
+        padding: 2px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    
+    .toggle-btn.collapsed i {
+        transform: rotate(-90deg);
+    }
+    
+    .tree-node:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+    }
+    
+    .dark .tree-node:hover {
+        background-color: rgba(59, 130, 246, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        {% if selected_firmware %}
+        <a href="{% url 'xscout:firmware_analysis' selected_firmware.id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Analysis Overview
+        </a>
+        {% else %}
+        <a href="{% url 'xscout:index' %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            xScout
+        </a>
+        {% endif %}
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">Extraction</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-box-open text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Firmware Extraction</h1>
+                    {% if selected_firmware %}
+                    <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ selected_firmware.model.manufacturer.name }} {{ selected_firmware.model.model_number }} - {{ selected_firmware.version }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            {% if selected_firmware %}
+            <div class="flex items-center space-x-3">
+                <button type="button" 
+                        id="re-extract-btn-top"
+                        data-firmware-id="{{ selected_firmware.id }}"
+                        class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                    <i class="fas fa-redo mr-2"></i>
+                    <span>Re-Extract Firmware</span>
+                </button>
+                <a href="{% url 'xscout:firmware_analysis' selected_firmware.id %}" 
+                   class="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span>Back to Analysis</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Hidden CSRF token field for JavaScript -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <!-- Error Message -->
+    {% if error %}
+    <div class="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-exclamation-triangle text-red-500 dark:text-red-400"></i>
+            <p class="text-red-800 dark:text-red-200">{{ error }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Firmware Selection Card -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-file-code text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Select Firmware</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form action="{% url 'xscout:extract' %}" method="get" id="firmware-select-form">
+                    <div class="mb-6">
+                        <label for="firmware_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Choose Firmware to Extract
+                        </label>
+                        <select name="firmware_id" id="firmware_id" 
+                                class="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white transition-colors duration-200">
+                            <option value="">-- Select Firmware --</option>
+                            {% for firmware in firmwares %}
+                            <option value="{{ firmware.id }}" {% if selected_firmware.id == firmware.id %}selected{% endif %}>
+                                {{ firmware.model }} - {{ firmware.version }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" 
+                            class="w-full inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <i class="fas fa-search"></i>
+                        <span>View Firmware</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Firmware Details Card -->
+        {% if selected_firmware %}
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-500 to-indigo-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-info-circle text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Firmware Details</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                    {{ selected_firmware.model }} - {{ selected_firmware.version }}
+                </h3>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Manufacturer:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.model.manufacturer }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Device Type:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.model.device_type }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">File Size:</span>
+                        <span class="text-gray-900 dark:text-white">{{ selected_firmware.file_size|filesizeformat }}</span>
+                    </div>
+                    <div class="flex justify-between items-start py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">MD5:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ selected_firmware.md5 }}</code>
+                    </div>
+                    <div class="flex justify-between items-start py-2">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">SHA256:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ selected_firmware.sha256 }}</code>
+                    </div>
+                </div>
+                
+                <!-- Extraction Status -->
+                {% if extraction_completed %}
+                    <div class="bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-xl p-4 mb-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-check-circle text-green-500 dark:text-green-400"></i>
+                                                          <p class="text-green-800 dark:text-green-200">
+                                  {% if rootfs_found %}
+                                  Extraction completed successfully. Root filesystem found: 
+                                  <br><span class="text-xs italic text-green-700 dark:text-green-300 break-all font-mono">{{ rootfs_relative_path|default:"./extracted_files/squashfs-root" }}</span>
+                                  {% else %}
+                                  Extraction completed successfully. No root filesystem found.
+                                  {% endif %}
+                              </p>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Extraction Status -->
+                {% if extraction_completed %}
+                <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p class="text-green-700 dark:text-green-300 font-medium">✓ Extraction Completed</p>
+                </div>
+                {% else %}
+                <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p class="text-blue-700 dark:text-blue-300 font-medium">Ready for Extraction</p>
+                    <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">Use the main analysis page to start extraction</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Extraction Progress Section -->
+    {% if selected_firmware %}
+    <div id="extraction-progress" class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8 hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-spinner fa-spin text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Extraction Progress</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="progress-wrapper mb-6">
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-8 overflow-hidden">
+                    <div id="progress-bar" 
+                         class="bg-gradient-to-r from-blue-500 to-purple-600 h-8 rounded-full transition-all duration-500 ease-out flex items-center justify-center" 
+                         style="width: 0%;">
+                    </div>
+                </div>
+                <div class="progress-text">
+                    <span id="progress-text">Initializing...</span>
+                </div>
+            </div>
+            
+            <div class="console-output" id="console-output">
+                <p class="console-line">Starting extraction...</p>
+            </div>
+            
+            <input type="hidden" id="firmware-id" value="{{ selected_firmware.id }}">
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Extraction Completed Section -->
+    {% if extraction_completed %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-check-circle text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Extraction Completed</h2>
+            </div>
+        </div>
+        
+                    <div class="p-6">
+                <p class="text-gray-700 dark:text-gray-300 mb-6">The firmware has been extracted successfully.</p>
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <i class="fas fa-folder-open text-blue-500 dark:text-blue-400"></i>
+                        <p class="text-gray-800 dark:text-gray-200">
+                            Extraction directory: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono">{{ extraction_dir }}</code>
+                        </p>
+                    </div>
+                    
+                    {% if directory_tree %}
+                    <div class="mt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
+                                <i class="fas fa-sitemap mr-2"></i>
+                                Directory Structure
+                            </h4>
+                            <button id="toggle-tree" class="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded transition-colors">
+                                <i class="fas fa-eye" id="toggle-icon"></i>
+                                <span id="toggle-text">Collapse</span>
+                            </button>
+                        </div>
+                        <div id="directory-tree" class="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600 max-h-96 overflow-y-auto">
+                            <div class="tree-container">
+                                <ul class="tree">
+                                    {% include 'xScout/partials/directory_tree_node.html' with node=directory_tree %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- Action buttons moved to top header -->
+                <div class="text-center">
+                    <p class="text-gray-600 dark:text-gray-400">Extraction completed successfully.</p>
+                </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Extraction Directory Without Rootfs Section -->
+    {% if extraction_dir_exists %}
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-yellow-500 to-amber-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-exclamation-circle text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Extraction Completed With Issues</h2>
+            </div>
+        </div>
+        
+                    <div class="p-6">
+                <p class="text-gray-700 dark:text-gray-300 mb-6">{{ extraction_message }}</p>
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-folder-open text-yellow-500 dark:text-yellow-400"></i>
+                        <p class="text-gray-800 dark:text-gray-200">
+                            Extraction directory: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono">{{ extraction_dir }}</code>
+                        </p>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        <p>You may need to manually examine the extraction directory to locate the rootfs.</p>
+                    </div>
+                </div>
+                <!-- Action buttons moved to top header -->
+                <div class="text-center">
+                    <p class="text-gray-600 dark:text-gray-400">Extraction completed with issues.</p>
+                </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Check if jQuery is loaded properly
+    if (typeof jQuery === 'undefined') {
+        // Dynamically load jQuery if not available
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
+        script.onload = function() {
+            initializeScripts();
+        };
+        document.head.appendChild(script);
+    } else {
+        initializeScripts();
+    }
+    
+    // Flag to prevent multiple submissions
+    let isProcessing = false;
+    
+    // Main initialization function
+    function initializeScripts() {
+        // Handle firmware selection change
+        $('#firmware_id').change(function() {
+            $('#firmware-select-form').submit();
+        });
+        
+        // Handle the analyze extracted firmware buttons
+        $('#start-analysis-btn, #start-analysis-btn-issues').on('click', function(event) {
+            event.preventDefault();
+            
+            // Prevent multiple clicks
+            if (isProcessing) {
+                console.log('Already processing a request, ignoring click');
+                return;
+            }
+            
+            // Set processing flag
+            isProcessing = true;
+            
+            // Get the firmware ID
+            let firmwareId = $(this).data('firmware-id');
+            
+            if (!firmwareId) {
+                alert('Error: No firmware ID found');
+                isProcessing = false;
+                return;
+            }
+            
+            // Disable the button
+            $(this).prop('disabled', true);
+            $(this).html('<i class="fas fa-spinner fa-spin"></i><span class="ml-2">Analyzing...</span>');
+            
+            // Store button reference
+            const clickedButton = $(this);
+            
+            // Get CSRF token
+            const csrftoken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+            
+            // Create and submit a form to start analysis
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{% url 'xscout:start_components_analysis' %}";
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrftoken;
+            form.appendChild(csrfInput);
+            
+            // Add firmware ID
+            const firmwareInput = document.createElement('input');
+            firmwareInput.type = 'hidden';
+            firmwareInput.name = 'firmware_id';
+            firmwareInput.value = firmwareId;
+            form.appendChild(firmwareInput);
+            
+            // Add to body and submit
+            document.body.appendChild(form);
+            form.submit();
+        });
+        
+        // Handle start extraction button click - for all extraction buttons
+        $('#start-extraction-btn, #re-extract-btn, #re-extract-btn-top').on('click', function(event) {
+            event.preventDefault(); // Prevent any default behavior
+            
+            // Prevent multiple clicks
+            if (isProcessing) {
+                console.log('Already processing a request, ignoring click');
+                return;
+            }
+            
+            // Set processing flag
+            isProcessing = true;
+            
+            // Get the firmware ID
+            let firmwareId = $(this).data('firmware-id');
+            
+            if (!firmwareId) {
+                alert('Error: No firmware ID found');
+                isProcessing = false;
+                return;
+            }
+            
+            // Disable the button
+            $(this).prop('disabled', true);
+            $(this).html('<i class="fas fa-spinner fa-spin"></i><span class="ml-2">Starting...</span>');
+            
+            // Store button reference
+            const clickedButton = $(this);
+            
+            // Get CSRF token
+            const csrftoken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+            
+            // AJAX URL
+            const ajaxUrl = '{% url "xscout:start_extraction" %}';
+            
+            console.log('Starting extraction with firmware ID:', firmwareId, 'URL:', ajaxUrl);
+            
+            // Show the progress section and reset it
+            $('#extraction-progress').removeClass('hidden');
+            
+            // Clear previous console output and reset progress
+            $('#console-output').empty().append('<p class="console-line">Starting extraction...</p>');
+            $('#progress-bar').css('width', '0%');
+            $('#progress-text').text('Initializing...');
+            
+            // Start extraction
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    firmware_id: firmwareId
+                },
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                },
+                success: function(response) {
+                    console.log('jQuery AJAX success:', response);
+                    if (response.success) {
+                        // Start polling for status
+                        pollExtractionStatus(firmwareId);
+                    } else {
+                        // Enable the button again
+                        clickedButton.prop('disabled', false);
+                        if (clickedButton.attr('id') === 'start-extraction-btn') {
+                            clickedButton.html('<i class="fas fa-box-open"></i><span class="ml-2">Extract Firmware</span>');
+                        } else {
+                            clickedButton.html('<i class="fas fa-redo"></i><span class="ml-2">Re-Extract Firmware</span>');
+                        }
+                        
+                        // Reset processing flag
+                        isProcessing = false;
+                        
+                        // Show error
+                        alert('Server error: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('jQuery AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    
+                    // Enable the button again
+                    clickedButton.prop('disabled', false);
+                    if (clickedButton.attr('id') === 'start-extraction-btn') {
+                        clickedButton.html('<i class="fas fa-box-open"></i><span class="ml-2">Extract Firmware</span>');
+                    } else {
+                        clickedButton.html('<i class="fas fa-redo"></i><span class="ml-2">Re-Extract Firmware</span>');
+                    }
+                    
+                    // Reset processing flag
+                    isProcessing = false;
+                    
+                    // Show error
+                    alert('Failed to start extraction. Please try again.');
+                }
+            });
+        });
+        
+        // Function to poll extraction status
+        function pollExtractionStatus(firmwareId) {
+            const consoleOutput = $('#console-output');
+            const statusUrl = `/xscout/extract/status/${firmwareId}/`;
+            
+            // Reset retry counter
+            window.statusCheckRetries = 0;
+            
+            function updateStatus() {
+                $.ajax({
+                    url: statusUrl,
+                    type: 'GET',
+                    success: function(response) {
+                        const status = response.status;
+                        
+                        // Add status to console
+                        consoleOutput.append(`<p class="console-line">Status: ${status}</p>`);
+                        consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                        
+                        // Update progress text and bar based on status and progress
+                        if (status === 'not_started') {
+                            $('#progress-bar').css('width', '10%');
+                            $('#progress-text').text('Not Started');
+                        } else if (status === 'running' || status === 'partial') {
+                            // Check if there's extraction_progress in the response
+                            if (response.extraction_progress !== undefined) {
+                                $('#progress-bar').css('width', `${response.extraction_progress}%`);
+                                $('#progress-text').text(`${response.extraction_progress}% - In Progress`);
+                            } else {
+                                // Fallback to the simpler progress indication
+                                $('#progress-bar').css('width', '50%');
+                                $('#progress-text').text('In Progress');
+                            }
+                        } else if (status === 'completed') {
+                            $('#progress-bar').css('width', '100%');
+                            $('#progress-text').text('Completed');
+                            
+                            if (response.extraction_completed) {
+                                consoleOutput.append(`<p class="console-line">Extraction completed!</p>`);
+                                
+                                if (response.rootfs_found) {
+                                    consoleOutput.append(`<p class="console-line">Root filesystem found.</p>`);
+                                } else {
+                                    consoleOutput.append(`<p class="console-line">No root filesystem found.</p>`);
+                                }
+                            } else if (response.message) {
+                                consoleOutput.append(`<p class="console-line">${response.message}</p>`);
+                                if (response.extraction_dir) {
+                                    consoleOutput.append(`<p class="console-line">Check extraction directory: ${response.extraction_dir}</p>`);
+                                }
+                            }
+                            
+                            consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                            
+                            // Reload the page to show the completed state
+                            setTimeout(function() {
+                                isProcessing = false; // Reset flag before reload
+                                window.location.reload();
+                            }, 2000);
+                            return;
+                        } else if (status === 'error') {
+                            $('#progress-text').text('Error');
+                            consoleOutput.append(`<p class="console-line text-red-400">Error: ${response.error || 'Unknown error'}</p>`);
+                            consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                            
+                            // Reset processing flag and re-enable buttons on error
+                            isProcessing = false;
+                            return;
+                        }
+                        
+                        // Continue polling if not completed
+                        if (status !== 'completed' && status !== 'error') {
+                            setTimeout(updateStatus, 3000);
+                        }
+                    },
+                    error: function() {
+                        consoleOutput.append(`<p class="console-line text-red-400">Error checking status</p>`);
+                        consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                        
+                        // Try again after a delay, but limit retries
+                        if (!window.statusCheckRetries) {
+                            window.statusCheckRetries = 0;
+                        }
+                        window.statusCheckRetries++;
+                        
+                        if (window.statusCheckRetries < MAX_RETRY_LIMIT) {
+                            setTimeout(updateStatus, 5000);
+                        } else {
+                            consoleOutput.append(`<p class="console-line text-red-400">Too many status check failures. Please refresh the page.</p>`);
+                            consoleOutput.scrollTop(consoleOutput[0].scrollHeight);
+                            isProcessing = false;
+                        }
+                    }
+                });
+            }
+            
+            // Start polling
+            updateStatus();
+        }
+        
+        // Directory tree functionality
+        $('#toggle-tree').on('click', function() {
+            const treeContainer = $('#directory-tree');
+            const toggleIcon = $('#toggle-icon');
+            const toggleText = $('#toggle-text');
+            
+            if (treeContainer.is(':visible')) {
+                treeContainer.hide();
+                toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+                toggleText.text('Expand');
+            } else {
+                treeContainer.show();
+                toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+                toggleText.text('Collapse');
+            }
+        });
+    }
+    
+    // Tree node toggle functionality (global function)
+    function toggleNode(button) {
+        const $button = $(button);
+        const $children = $button.closest('.tree-node').find('> .tree-children');
+        
+        if ($children.hasClass('collapsed')) {
+            $children.removeClass('collapsed');
+            $button.removeClass('collapsed');
+        } else {
+            $children.addClass('collapsed');
+            $button.addClass('collapsed');
+        }
+    }
+</script>
+{% endblock %} 

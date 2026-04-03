@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}xQuire - Firmware Management{% endblock %}
+
+{% block page_title %}xQuire Dashboard{% endblock %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg">
+        <i class="fas fa-download text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xQuire</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Firmware Download and Management Module</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Firmware Files Card -->
+        <div class="group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-file-archive text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-blue-100 text-sm font-medium">Firmware Files</p>
+                    <p class="text-4xl font-bold">{{ firmware_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'xquire:index' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Browse All</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Manufacturers Card -->
+        <div class="group bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-industry text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-green-100 text-sm font-medium">Manufacturers</p>
+                    <p class="text-4xl font-bold">{{ manufacturer_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'admin:modules_xQuire_manufacturer_changelist' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Manage</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Device Types Card -->
+        <div class="group bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-microchip text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-cyan-100 text-sm font-medium">Device Types</p>
+                    <p class="text-4xl font-bold">{{ device_type_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'admin:modules_xQuire_devicetype_changelist' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Manage</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+
+        <!-- Device Models Card -->
+        <div class="group bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i class="fas fa-mobile-alt text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-orange-100 text-sm font-medium">Device Models</p>
+                    <p class="text-4xl font-bold">{{ model_count }}</p>
+                </div>
+            </div>
+            <a href="{% url 'admin:modules_xQuire_firmwaremodel_changelist' %}" class="flex items-center text-white/90 hover:text-white transition-colors duration-200">
+                <span class="text-sm font-medium">Manage</span>
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                Quick Actions
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Upload Firmware Action -->
+                <div class="group bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6 border border-green-200 dark:border-green-700 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                    <div class="flex items-start space-x-4">
+                        <div class="p-3 bg-green-500 rounded-xl shadow-lg">
+                            <i class="fas fa-upload text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Upload Firmware</h4>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4 text-sm">Upload a firmware file from your local system to the repository for analysis and distribution.</p>
+                            <a href="{% url 'xquire:upload_firmware' %}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200 group">
+                                <i class="fas fa-upload mr-2"></i>
+                                Upload File
+                                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download from URL Action -->
+                <div class="group bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6 border border-blue-200 dark:border-blue-700 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                    <div class="flex items-start space-x-4">
+                        <div class="p-3 bg-blue-500 rounded-xl shadow-lg">
+                            <i class="fas fa-cloud-download-alt text-white text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Download from URL</h4>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4 text-sm">Download firmware directly from a URL and automatically add it to the repository for processing.</p>
+                            <a href="{% url 'xquire:download_firmware' %}" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 group">
+                                <i class="fas fa-cloud-download-alt mr-2"></i>
+                                Download from URL
+                                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform duration-200"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Actions -->
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <a href="{% url 'xscout:index' %}" class="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 transition-all duration-200">
+                        <i class="fas fa-search mr-2"></i>Analyze with xScout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-indigo-500 to-indigo-600">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-search"></i>
+                </div>
+                Search & Filter
+            </h3>
+        </div>
+        <div class="p-6">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-search mr-2 text-indigo-500"></i>Search Query
+                    </label>
+                    <input type="text" name="search_query" value="{{ request.GET.search_query }}" 
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                           placeholder="Search firmwares...">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-industry mr-2 text-indigo-500"></i>Manufacturer
+                    </label>
+                    <select name="manufacturer" 
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
+                        <option value="">All Manufacturers</option>
+                        {% for manufacturer in manufacturers %}
+                            <option value="{{ manufacturer.id }}" {% if request.GET.manufacturer == manufacturer.id|stringformat:"s" %}selected{% endif %}>
+                                {{ manufacturer.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-microchip mr-2 text-indigo-500"></i>Device Type
+                    </label>
+                    <select name="device_type" 
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
+                        <option value="">All Device Types</option>
+                        {% for device_type in device_types %}
+                            <option value="{{ device_type.id }}" {% if request.GET.device_type == device_type.id|stringformat:"s" %}selected{% endif %}>
+                                {{ device_type.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-indigo-700 focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Firmware Table Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <div class="p-2 bg-white/20 rounded-lg mr-3">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                Firmware Files
+                {% if firmware_list %}
+                    <span class="ml-3 bg-white/20 text-white text-sm px-2 py-1 rounded-lg">
+                        {{ firmware_list|length }} files
+                    </span>
+                {% endif %}
+            </h3>
+            <div class="flex space-x-3">
+                <a href="{% url 'xquire:upload_firmware' %}" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 flex items-center transform hover:scale-105">
+                    <i class="fas fa-upload mr-2"></i>Upload
+                </a>
+                <a href="{% url 'xquire:download_firmware' %}" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-200 flex items-center transform hover:scale-105">
+                    <i class="fas fa-download mr-2"></i>Download
+                </a>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Manufacturer</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Model</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Version</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Device Type</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Upload Date</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for firmware in firmware_list %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-8 w-8">
+                                    <div class="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-industry text-blue-600 dark:text-blue-300 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ firmware.model.manufacturer }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ firmware.model.model_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ firmware.version }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ firmware.model.device_type }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <div class="flex items-center">
+                                <i class="fas fa-calendar mr-2 text-gray-400"></i>
+                                {{ firmware.upload_date|date:"M d, Y" }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex items-center space-x-3">
+                                <a href="{% url 'xquire:firmware_detail' firmware.id %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200" title="View details">
+                                    <i class="fas fa-info-circle text-lg"></i>
+                                </a>
+                                <a href="{{ firmware.get_download_url }}" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors duration-200" title="Download firmware">
+                                    <i class="fas fa-download text-lg"></i>
+                                </a>
+                                <a href="{% url 'xscout:analyze' %}?firmware_id={{ firmware.id }}" class="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200" title="Analyse firmware binary">
+                                    <i class="fas fa-search text-lg"></i>
+                                </a>
+                                <a href="{% url 'xscout:extract' %}?firmware_id={{ firmware.id }}" class="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 transition-colors duration-200" title="Extract firmware">
+                                    <i class="fas fa-box-open text-lg"></i>
+                                </a>
+                                <a href="{% url 'xscout:components_analysis' %}?firmware_id={{ firmware.id }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-200" title="Analyse extracted components">
+                                    <i class="fas fa-microscope text-lg"></i>
+                                </a>
+                                <a href="{% url 'xquire:delete_firmware' firmware.id %}" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200" title="Delete firmware">
+                                    <i class="fas fa-trash-alt text-lg"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl mb-4">
+                                    <i class="fas fa-file-archive text-gray-400 text-3xl"></i>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">No firmware files found.</p>
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <a href="{% url 'xquire:upload_firmware' %}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200">
+                                        <i class="fas fa-upload mr-2"></i>Upload Firmware
+                                    </a>
+                                    <a href="{% url 'xquire:download_firmware' %}" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200">
+                                        <i class="fas fa-download mr-2"></i>Download from URL
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if firmware_list.paginator.num_pages > 1 %}
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                    Showing page {{ firmware_list.number }} of {{ firmware_list.paginator.num_pages }} 
+                    ({{ firmware_list.paginator.count }} total files)
+                </div>
+                <nav class="flex items-center space-x-2">
+                    {% if firmware_list.has_previous %}
+                        <a href="?page=1{% if request.GET.search_query %}&search_query={{ request.GET.search_query }}{% endif %}{% if request.GET.manufacturer %}&manufacturer={{ request.GET.manufacturer }}{% endif %}{% if request.GET.device_type %}&device_type={{ request.GET.device_type }}{% endif %}" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors duration-200">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                        <a href="?page={{ firmware_list.previous_page_number }}{% if request.GET.search_query %}&search_query={{ request.GET.search_query }}{% endif %}{% if request.GET.manufacturer %}&manufacturer={{ request.GET.manufacturer }}{% endif %}{% if request.GET.device_type %}&device_type={{ request.GET.device_type }}{% endif %}" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors duration-200">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    {% endif %}
+                    
+                    <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300">
+                        Page {{ firmware_list.number }}
+                    </span>
+                    
+                    {% if firmware_list.has_next %}
+                        <a href="?page={{ firmware_list.next_page_number }}{% if request.GET.search_query %}&search_query={{ request.GET.search_query }}{% endif %}{% if request.GET.manufacturer %}&manufacturer={{ request.GET.manufacturer }}{% endif %}{% if request.GET.device_type %}&device_type={{ request.GET.device_type }}{% endif %}" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors duration-200">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                        <a href="?page={{ firmware_list.paginator.num_pages }}{% if request.GET.search_query %}&search_query={{ request.GET.search_query }}{% endif %}{% if request.GET.manufacturer %}&manufacturer={{ request.GET.manufacturer }}{% endif %}{% if request.GET.device_type %}&device_type={{ request.GET.device_type }}{% endif %}" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors duration-200">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

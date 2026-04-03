@@ -1,0 +1,219 @@
+#!/bin/bash
+set -eu
+
+BOLD=""
+RESET=""
+RED=""
+GREEN=""
+if [ -t 0 ]; then
+    # Can only use colors if we're in a terminal
+    BOLD=$(tput bold)
+    RESET=$(tput sgr0)
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+fi
+
+
+image="xendity/xfs"
+
+xfs_run() {
+    local cmd=()
+    local maps=()
+    local build=false
+    local singularity=false
+    local verbose=false
+    local image="xendity/xfs" # Name of container instance
+
+    # Process each command-line argument
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --wrapper-help)
+                echo "Usage: xfs [WRAPPER FLAGS] [FLAGS] FIRMWARE_FILE"
+                echo "Wrapper script for running XFS in a Docker container"
+                echo ""
+                echo "Wrapper-specific flags may be passed in *before* the xfs flags and args. If a value is required, it must be specified immediately after the flag with a space."
+                echo "  --build: Build the xfs container before running the specified command. If no other arguments are provided, the container will be built and the script will exit."
+                echo "  --build-singularity: Build the xfs container as a sif."
+                echo "  --image: Which image to run. Default: $image"
+                echo "  --verbose: Print verbose output for xfs wrapper (e.g., filesystem mappings, docker command)"
+                echo "  --wrapper-help: this message"
+                echo ""
+                echo "All other arguments will be passed through to the main xfs command in the container."
+                echo "For example try:"
+                echo "  xfs --help"
+                echo "  xfs ./your_firmware.bin"
+                exit 0
+                ;;
+            --build)
+                build=true
+                shift
+                ;;
+            --build-singularity)
+                build=true
+                singularity=true
+                shift
+                ;;
+            --image)
+                image="$2"
+                shift 2
+                ;;
+            --verbose)
+                verbose=true
+                shift
+                ;;
+            *)  # Default case: If no more known options, keep as part of command
+                cmd=("$@")
+                break
+                ;;
+        esac
+    done
+
+    # If command is empty, parse any un-shifted args into array - probably means we were run with wrapper flags only (i.e., --build)
+    if [[ ${#cmd[@]} -eq 0 ]]; then
+        cmd=("$@")
+    fi
+
+    # If verbose, log all wrapper args and command
+    if $verbose; then
+        echo "${BOLD}Wrapper args:${RESET}"
+        echo "  build: $build"
+        echo "  image: $image"
+        echo "  verbose: $verbose"
+        echo "  fw2tar cmd: ${cmd[*]}"
+        echo
+    fi
+
+    if $build; then
+        echo "Running with container build (--build). Entire container will be rebuilt and tagged as $image."
+        # Make sure we have Dockerfile and directory is namedfw2tar 
+        if [ ! -f "Dockerfile" ]; then
+            echo "Dockerfile not found in current directory and you requested a container rebuild"
+            exit 1
+        fi
+        # Check if current directory is named fw2tar
+        if [ ! "$(basename "$(pwd)")" == "xfs" ]; then
+            echo "Current directory is not named xfs but you requested a container rebuild"
+            exit 1
+        fi
+
+        if [ ! -z "${SSH_AUTH_SOCK+x}" ]; then
+            # Build with ssh
+            DOCKER_BUILDKIT=1 docker build --build-arg SSH=1 --ssh default -t $image .
+        else
+            DOCKER_BUILDKIT=1 docker build -t $image .
+        fi
+
+        # --build-singularity
+        if $singularity; then
+            docker run -v /var/run/docker.sock:/var/run/docker.sock \
+                -v $(pwd):/output \
+                --privileged -t \
+                --rm quay.io/singularity/docker2singularity:v3.9.0 xendity/xfs
+            mv xendity_xfs*.sif xfs.sif
+
+            echo "$image built. Exiting."
+            exit 0
+        fi
+
+        # If we have no other args, exit 0
+        if [[ ${#cmd[@]} -eq 0 ]]; then
+            echo "$image built. Exiting as no command was specified."
+            exit 0
+        fi
+    fi
+
+    # Check for firmware file and map it
+    for i in "${!cmd[@]}"; do
+	if [[ -f "${cmd[$i]}" ]] && [[ "${cmd[$((i - 1))]}" != "--output" ]]; then
+	    local arg="${cmd[$i]}"
+	    local abspath=$(realpath "$arg")
+	    local host_path=$(dirname "$abspath")
+	    local guest_path="/host_$(basename "$host_path")"
+	    maps+=("$host_path:$guest_path")
+	    cmd[$i]="/host_$(basename "$host_path")/$(basename "$arg")"
+	fi
+    done
+
+    # Check for "--output" flag or set default to current directory
+    local has_output_flag=false
+    local output_dir=""
+    
+    # First check if --output is specified
+    for ((i=0; i<${#cmd[@]}; i++)); do
+        if [[ "${cmd[$i]}" == "--output" && $((i+1)) -lt ${#cmd[@]} ]]; then
+            has_output_flag=true
+            output_dir="${cmd[$i+1]}"
+            if [[ ! -d "$output_dir" ]]; then
+                mkdir -p "$output_dir"
+            fi
+
+            # Add mapping for the output directory
+            local abspath=$(realpath "$output_dir")
+            local guest_path="/host_$(basename "$abspath")"
+            maps+=("$abspath:$guest_path")
+            cmd[$i+1]="$guest_path"
+        fi
+    done
+    
+    # If no output flag was specified, add current directory as default
+    if [[ "$has_output_flag" == "false" ]]; then
+        output_dir="$(pwd)"
+        local abspath=$(realpath "$output_dir")
+        local guest_path="/host_$(basename "$abspath")"
+        maps+=("$abspath:$guest_path")
+        cmd+=("--output" "$guest_path")
+    fi
+
+    # No need to handle scratch-dir as it's been removed in favor of --no-scratch
+
+    # Sort mappings by path length
+    IFS=$'\n' maps=($(sort -r <<<"${maps[*]}"))
+    unset IFS
+
+    if $verbose; then
+        echo "${BOLD}Mappings from host paths to guest paths: $RESET"
+        for map in "${maps[@]}"; do
+            echo "  $map"
+        done
+        echo
+    fi
+
+    # Build Docker command
+    docker_cmd=("docker" "run" "--rm")
+    docker_cmd+=("-u" "$(id -u):$(id -g)") # XXX will fakeroot be okay?
+
+    # Add mappings to docker command
+    for map in "${maps[@]}"; do
+        docker_cmd+=("-v" "$map")
+    done
+
+    # Add env variable of penguin bash script hash
+    hash=$(sha1sum "$0" | awk '{print $1}')
+    docker_cmd+=("-e" "XFS_HASH=$hash")
+
+    docker_cmd+=("$image")
+    docker_cmd+=("fakeroot_xfs")
+    docker_cmd+=("${cmd[@]}")
+
+    if $verbose; then
+        echo "${BOLD}XFS command:${RESET}"
+        echo "  xfs ${cmd[@]}"
+        echo
+
+        echo "${BOLD}Complete docker commands:${RESET}"
+        echo "  ${docker_cmd[*]}"
+        echo
+
+        echo "${BOLD}Command output:${RESET}"
+    fi
+
+    # Run the Docker command
+    "${docker_cmd[@]}"
+
+}
+
+# Main function
+main() {
+    xfs_run "$@"
+}
+main "$@"

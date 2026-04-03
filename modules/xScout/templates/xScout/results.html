@@ -1,0 +1,651 @@
+{% extends 'base.html' %}
+{% load xscout_filters %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+{% block extra_head %}
+<style>
+    .console-output {
+        background-color: #222;
+        color: #ddd;
+        font-family: monospace;
+        padding: 10px;
+        border-radius: 5px;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+    }
+    .console-line {
+        margin: 0;
+        padding: 2px 0;
+        line-height: 1.2;
+    }
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.5rem;
+        text-transform: uppercase;
+    }
+    .result-section {
+        margin-bottom: 2rem;
+    }
+    .result-card {
+        height: 100%;
+    }
+    .metadata-table th {
+        width: 150px;
+    }
+    .hash-value {
+        font-family: monospace;
+        word-break: break-all;
+    }
+    .chart-container {
+        height: 250px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Hidden CSRF token field for JavaScript -->
+    {% csrf_token %}
+    
+    <!-- Breadcrumb Navigation -->
+    <nav class="flex items-center space-x-2 text-sm mb-6">
+        <a href="{% url 'xscout:firmware_analysis' analysis.firmware_id %}" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
+            Analysis Overview
+        </a>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <span class="text-gray-600 dark:text-gray-400">Firmware Binary Analysis Results</span>
+    </nav>
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-chart-bar text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Firmware Binary Analysis Results</h1>
+                    {% if firmware %}
+                    <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ firmware.model.manufacturer.name }} {{ firmware.model.model_number }} - {{ firmware.version }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-3">
+                <button onclick="startBinaryAnalysis('{{ firmware.id }}')" 
+                        class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                    <i class="fas fa-sync mr-2"></i>
+                    <span>Re-run Analysis</span>
+                </button>
+                <a href="{% url 'xscout:firmware_analysis' analysis.firmware_id %}" 
+                   class="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span>Back to Analysis</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview and Encryption Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Overview Card -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-info-circle text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Overview</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">File Name:</span>
+                        <span class="text-gray-900 dark:text-white font-mono text-sm">{{ analysis.file_path|default:"N/A"|filename }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">File Size:</span>
+                        <span class="text-gray-900 dark:text-white">{{ analysis.metadata.file_size_human|default:"N/A" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">File Format:</span>
+                        <span class="text-gray-900 dark:text-white">{{ analysis.file_format.raw_output|default:"N/A" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Architecture:</span>
+                        <span class="text-gray-900 dark:text-white">{{ analysis.file_format.architecture|default:"Unknown" }}</span>
+                    </div>
+                    <div class="flex justify-between items-start py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">MD5 Hash:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ analysis.hashes.md5|default:"N/A" }}</code>
+                    </div>
+                    <div class="flex justify-between items-start py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">SHA-256 Hash:</span>
+                        <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono break-all">{{ analysis.hashes.sha256|default:"N/A" }}</code>
+                    </div>
+                    <div class="flex justify-between items-center py-3">
+                        <span class="font-semibold text-gray-700 dark:text-gray-300">Analysis Date:</span>
+                        <span class="text-gray-900 dark:text-white">{{ analysis.analysis_date|date:"M d, Y H:i:s" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Encryption Detection Card -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-key text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Encryption Detection</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Probability</h3>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">{{ analysis.encryption.encryption_probability|default:"Unknown" }}</p>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Confidence Level</span>
+                            <span class="text-lg font-bold text-red-600 dark:text-red-400">
+                                {{ analysis.encryption.encryption_confidence|multiply:100|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
+                            <div class="bg-gradient-to-r from-red-500 to-red-600 h-4 rounded-full transition-all duration-500" 
+                                 style="width: {{ analysis.encryption.encryption_confidence|multiply:100 }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if analysis.encryption.encryption_factors %}
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Key Factors</h3>
+                    <div class="space-y-3">
+                        {% for factor, value in analysis.encryption.encryption_factors.items %}
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ factor|replace_underscores }}</span>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                                    <div class="h-3 rounded-full {% if value > 0.7 %}bg-red-500{% elif value > 0.4 %}bg-yellow-500{% else %}bg-green-500{% endif %}" 
+                                         style="width: {{ value|multiply:100 }}%;"></div>
+                                </div>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white w-10">{{ value|multiply:100|floatformat:0 }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if analysis.encryption.vendor_encryption %}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Vendor Patterns</h3>
+                    <div class="space-y-2">
+                        {% for vendor in analysis.encryption.vendor_encryption %}
+                        <div class="bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
+                            <span class="text-sm text-gray-800 dark:text-gray-200">{{ vendor }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Entropy Analysis Full Width -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-chart-line text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Entropy Analysis</h2>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div class="lg:col-span-2">
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+                                {{ analysis.entropy.entropy_value|floatformat:3 }} bits/byte
+                            </h3>
+                            <p class="text-lg text-gray-600 dark:text-gray-400">Classification: {{ analysis.entropy.classification }}</p>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Interpretation Guide</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-700 dark:text-gray-300">0.0-6.5:</span>
+                                    <span class="text-green-600 dark:text-green-400 font-medium">Likely uncompressed/unencrypted</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-700 dark:text-gray-300">6.5-7.2:</span>
+                                    <span class="text-yellow-600 dark:text-yellow-400 font-medium">Possibly compressed/encrypted</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-700 dark:text-gray-300">7.2-8.0:</span>
+                                    <span class="text-red-600 dark:text-red-400 font-medium">Very likely encrypted</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-3">
+                    <div class="chart-container">
+                        <canvas id="entropyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Extraction Points and Strategy Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-7 gap-8 mb-8">
+        <!-- Extraction Points -->
+        <div class="lg:col-span-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-puzzle-piece text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Extraction Points</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                {% if analysis.extraction_points.extraction_offsets %}
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Offset</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for point in analysis.extraction_points.extraction_offsets %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                                <td class="px-4 py-3">
+                                    <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono">
+                                        {{ point.offset }} (0x{{ point.offset|stringformat:"X" }})
+                                    </code>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ point.description }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                    <p class="text-gray-600 dark:text-gray-400">No extraction points found.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Extraction Strategy -->
+        <div class="lg:col-span-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-tools text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Extraction Strategy</h2>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="mb-4">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Confidence:</span>
+                    <span class="text-lg font-bold text-gray-900 dark:text-white ml-2">{{ analysis.extraction_strategy.confidence|default:"Unknown" }}</span>
+                </div>
+                
+                {% if analysis.extraction_strategy.recommended_extractors %}
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Recommended Tools</h3>
+                    <div class="space-y-2">
+                        {% for tool in analysis.extraction_strategy.recommended_extractors %}
+                        <div class="bg-purple-50 dark:bg-purple-900/20 px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800">
+                            <span class="text-sm text-purple-800 dark:text-purple-200 font-medium">{{ tool }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if analysis.extraction_strategy.format_flags %}
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Format Flags</h3>
+                    <div class="space-y-2">
+                        {% for flag, value in analysis.extraction_strategy.format_flags.items %}
+                        <div class="bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
+                            <span class="text-sm text-gray-800 dark:text-gray-200">{{ flag }}{% if value != 1 %} = {{ value }}{% endif %}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if analysis.extraction_strategy.special_handling %}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Special Handling</h3>
+                    <div class="space-y-2">
+                        {% for handling in analysis.extraction_strategy.special_handling %}
+                        <div class="bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <span class="text-sm text-blue-800 dark:text-blue-200">{{ handling }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Strings Analysis -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-file-signature text-white text-xl"></i>
+                    <h2 class="text-xl font-bold text-white">Strings Analysis</h2>
+                </div>
+                <button class="text-white hover:text-indigo-200 transition-colors duration-200" type="button" onclick="toggleStringsSection()">
+                    <i class="fas fa-chevron-down text-lg" id="strings-toggle-icon"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="hidden" id="strings-content">
+            <div class="p-6">
+                <div class="mb-6">
+                    <p class="text-lg text-gray-900 dark:text-white">
+                        Total strings found: <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ analysis.strings_analysis.total_strings|default:"0" }}</span>
+                    </p>
+                </div>
+                
+                {% if analysis.strings_analysis.vendor_detected %}
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Vendor Patterns</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Match Count</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Examples</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                {% for vendor in analysis.strings_analysis.vendor_detected %}
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ vendor.category }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{{ vendor.matches|length }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="space-y-1">
+                                            {% for match in vendor.matches|slice:":3" %}
+                                            <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200 font-mono">{{ match }}</code>
+                                            {% endfor %}
+                                            {% if vendor.matches|length > 3 %}
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">... and {{ vendor.matches|length|subtract:3 }} more</div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if analysis.strings_analysis.architecture_hints %}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Architecture Hints</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {% for hint in analysis.strings_analysis.architecture_hints %}
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                            <span class="text-sm text-indigo-800 dark:text-indigo-200">{{ hint }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+
+</div>
+
+<!-- Delete Analysis Confirmation Modal -->
+<div class="fixed inset-0 bg-black/50 hidden z-50" id="deleteAnalysisModal">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white">Confirm Delete</h3>
+                    <button class="text-white hover:text-red-200 transition-colors duration-200" onclick="hideDeleteModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-700 dark:text-gray-300 mb-6">Are you sure you want to delete this analysis? This action cannot be undone.</p>
+                <div class="flex justify-end space-x-3">
+                    <button class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors duration-200" onclick="hideDeleteModal()">
+                        Cancel
+                    </button>
+                    <button class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200" id="confirmDeleteBtn" data-analysis-id="{{ analysis.id }}">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Function to re-run Firmware binary analysis
+    function startBinaryAnalysis(firmwareId) {
+        if (!firmwareId) {
+            alert('Firmware ID is required');
+            return;
+        }
+        
+        // Disable the button while processing
+        const button = event.target.closest('button');
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span>Processing...</span>';
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value || '{{ csrf_token }}';
+        
+        // Make the API call to start Firmware binary analysis
+        fetch(`/xscout/analyze/start/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: `firmware_id=${firmwareId}`
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success || data.status === 'running' || data.status === 'started') {
+                alert('Firmware Binary analysis started successfully! The page will refresh when complete.');
+                // Reload after a short delay to show the running status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                throw new Error(data.message || 'Failed to start analysis');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to start Firmware binary analysis: ' + error.message);
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        });
+    }
+    
+    // Strings section toggle
+    function toggleStringsSection() {
+        const content = document.getElementById('strings-content');
+        const icon = document.getElementById('strings-toggle-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            content.classList.add('hidden');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+
+    // Modal functions
+    function showDeleteModal() {
+        document.getElementById('deleteAnalysisModal').classList.remove('hidden');
+    }
+
+    function hideDeleteModal() {
+        document.getElementById('deleteAnalysisModal').classList.add('hidden');
+    }
+
+    // Create entropy visualization chart
+    document.addEventListener('DOMContentLoaded', function() {
+        const entropyValue = {{ analysis.entropy.entropy_value|default:"0"|floatformat:3 }};
+        
+        const ctx = document.getElementById('entropyChart').getContext('2d');
+        
+        // Determine color based on entropy value
+        let backgroundColor, borderColor;
+        if (entropyValue > 7.2) {
+            backgroundColor = 'rgba(239, 68, 68, 0.7)'; // Red for high entropy
+            borderColor = 'rgb(239, 68, 68)';
+        } else if (entropyValue > 6.5) {
+            backgroundColor = 'rgba(245, 158, 11, 0.7)'; // Yellow for medium entropy
+            borderColor = 'rgb(245, 158, 11)';
+        } else {
+            backgroundColor = 'rgba(34, 197, 94, 0.7)'; // Green for low entropy
+            borderColor = 'rgb(34, 197, 94)';
+        }
+        
+        // Create a simple bar chart
+        const entropyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Entropy Value'],
+                datasets: [{
+                    label: 'Entropy (bits/byte)',
+                    data: [entropyValue],
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 8,
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' bits/byte';
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.3)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Handle the delete confirmation
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            const analysisId = this.getAttribute('data-analysis-id');
+            if (!analysisId) {
+                console.error('No analysis ID found');
+                return;
+            }
+            
+            // Send delete request
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `/xscout/analyses/delete/${analysisId}/`, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        console.log('Delete response:', response);
+                        if (response.success) {
+                            // Redirect to the analysis list
+                            window.location.href = '/xscout/analyses/';
+                        } else {
+                            console.error('Server returned error:', response.message);
+                            alert(`Error: ${response.message || 'Failed to delete analysis'}`);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                        alert('Error processing response');
+                    }
+                } else {
+                    console.error('Error response:', xhr.status, xhr.statusText);
+                    alert('Error deleting analysis');
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('Network error occurred');
+                alert('Network error occurred');
+            };
+            
+            xhr.send();
+        });
+    });
+</script>
+{% endblock %} 

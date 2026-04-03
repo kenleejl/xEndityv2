@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_header %}
+<div class="flex items-center space-x-4">
+    <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
+        <i class="fas fa-search text-white text-xl"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">xScout</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Comprehensive Firmware Security Analysis</p>
+    </div>
+</div>
+{% endblock %}
+{% block extra_head %}
+<style>
+    .stat-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    .progress-ring-circle {
+        transition: stroke-dasharray 0.5s ease-in-out;
+    }
+    .firmware-row {
+        transition: background-color 0.2s ease;
+    }
+    .firmware-row:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .workflow-btn {
+        min-width: 120px;
+    }
+    .workflow-progress {
+        display: none;
+    }
+    .workflow-progress.show {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    {% if error %}
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm">
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <!-- <div class="mb-8">
+        <div class="flex items-center space-x-3 mb-4">
+            <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                <i class="fas fa-search text-white text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{{ module_name }}</h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 mt-1">{{ module_description }}</p>
+            </div>
+        </div>
+    </div> -->
+    
+
+    <!-- Recent Firmware Analysis -->
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 p-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-clock text-white text-xl"></i>
+                <h2 class="text-xl font-bold text-white">Recent Firmware & Quick Actions</h2>
+            </div>
+            <a href="{% url 'xquire:index' %}" class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg transition-colors duration-200 flex items-center">
+                Manage Firmware
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Firmware</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Overview</th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quick Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for fw_status in recent_firmwares %}
+                    <tr class="firmware-row">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-microchip text-blue-600 dark:text-blue-300"></i>
+                            </div>
+                        </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ fw_status.firmware.model.manufacturer.name }} {{ fw_status.firmware.model.model_number }}
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        {{ fw_status.firmware.model.device_type.name }} • v{{ fw_status.firmware.version }} • {{ fw_status.firmware.upload_date|date:"M d" }}
+                        </div>
+                    </div>
+                </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex flex-col space-y-1">
+                                <!-- Firmware Binary Analysis Status -->
+                                {% if fw_status.has_fw_binary_analysis %}
+                                    <span class="status-badge bg-green-100 text-green-800">Binary ✓</span>
+                                {% else %}
+                                    <span class="status-badge bg-gray-100 text-gray-800">Binary ✗</span>
+                                {% endif %}
+                                
+                                <!-- Extraction Status -->
+                                {% if fw_status.rootfs_found %}
+                                    <span class="status-badge bg-green-100 text-green-800">Extract ✓</span>
+                                {% elif fw_status.is_extracted %}
+                                    <span class="status-badge bg-yellow-100 text-yellow-800">Extract ~</span>
+                                {% else %}
+                                    <span class="status-badge bg-gray-100 text-gray-800">Extract ✗</span>
+                                {% endif %}
+                                
+                                <!-- Component Analysis Status -->
+                                {% if fw_status.has_components_analysis %}
+                                    <span class="status-badge bg-green-100 text-green-800">Component ✓</span>
+                                {% else %}
+                                    <span class="status-badge bg-gray-100 text-gray-800">Component ✗</span>
+                                {% endif %}
+                                
+                                <!-- Security Status -->
+                                {% if fw_status.has_security_analysis %}
+                                    <span class="status-badge bg-green-100 text-green-800">Security ✓</span>
+                                {% else %}
+                                    <span class="status-badge bg-gray-100 text-gray-800">Security ✗</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex flex-col space-y-1">
+                                <!-- Unified Analysis Overview -->
+                                <a href="{% url 'xscout:firmware_analysis' fw_status.firmware.id %}" 
+                                   class="text-xs px-2 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded hover:from-blue-600 hover:to-purple-600 transition-all font-semibold">
+                                    🔍 Analysis Overview
+                                </a>
+                                
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex flex-wrap gap-1 justify-center">
+                                <!-- Complete Workflow -->
+                                <!-- <button onclick="runWorkflow('{{ fw_status.firmware.id }}', 'complete', this)" 
+                                        class="workflow-btn text-xs px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white rounded hover:from-green-600 hover:to-green-700 transition-all">
+                                    Complete
+                                </button> -->
+                                
+                                <!-- Firmware Binary Analysis -->
+                                {% if not fw_status.has_fw_binary_analysis %}
+                                <button onclick="runWorkflow('{{ fw_status.firmware.id }}', 'binary_only', this)" 
+                                        class="workflow-btn text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                                    Binary
+                                </button>
+                                {% endif %}
+                                
+                                <!-- Extract + Analyze + Security -->
+                                {% if not fw_status.has_components_analysis %}
+                                <button onclick="runWorkflow('{{ fw_status.firmware.id }}', 'extract_analyze', this)" 
+                                        class="workflow-btn text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">
+                                    Extract+Security
+                                </button>
+                                {% endif %}
+                                
+                                <!-- Security Only -->
+                                {% if fw_status.has_components_analysis and not fw_status.has_security_analysis %}
+                                <button onclick="runWorkflow('{{ fw_status.firmware.id }}', 'security_only', this)" 
+                                        class="workflow-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">
+                                    Security
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Progress indicator -->
+                            <div class="workflow-progress mt-2">
+                                <div class="flex items-center justify-center space-x-2 text-xs text-gray-600">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span class="progress-text">Processing...</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                    <div class="bg-blue-600 h-1 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl mb-4">
+                                    <i class="fas fa-file-archive text-gray-400 text-3xl"></i>
+                                </div>
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">No firmware files found.</p>
+                                <a href="{% url 'xquire:upload_firmware' %}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200">
+                                    <i class="fas fa-upload mr-2"></i>Upload First Firmware
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Quick Access Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Upload & Analyze -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-green-500 to-green-600 p-4">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <i class="fas fa-plus mr-2"></i>
+                    Start New Analysis
+                </h3>
+            </div>
+            <div class="p-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Upload new firmware and start comprehensive analysis</p>
+                <div class="space-y-2">
+                    <a href="{% url 'xquire:upload_firmware' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-upload mr-2"></i>Upload Firmware
+                    </a>
+                    <a href="{% url 'xquire:download_firmware' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-download mr-2"></i>Download from URL
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View Results -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    View Results
+                </h3>
+            </div>
+            <div class="p-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Browse and compare analysis results</p>
+                <div class="space-y-2">
+                    <a href="{% url 'xscout:analysis_list' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-list mr-2"></i>All Binary Analyses
+                    </a>
+                    <a href="{% url 'xscout:security_dashboard' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-shield-alt mr-2"></i>Security Dashboard
+                    </a>
+                </div>
+            </div>
+                    </div>
+                    
+        <!-- Tools & Utilities -->
+        <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-4">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <i class="fas fa-tools mr-2"></i>
+                    Tools & Utilities
+                </h3>
+                        </div>
+            <div class="p-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Additional analysis tools and utilities</p>
+                <div class="space-y-2">
+                    <a href="{% url 'xscout:firmware_comparison' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-balance-scale mr-2"></i>Compare Firmware
+                    </a>
+                    <a href="{% url 'xquire:index' %}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-database mr-2"></i>Manage Firmware
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function runWorkflow(firmwareId, workflowType, button) {
+    // Get the row and progress indicator
+    const row = button.closest('tr');
+    const progressDiv = row.querySelector('.workflow-progress');
+    const progressBar = progressDiv.querySelector('.bg-blue-600');
+    const progressText = progressDiv.querySelector('.progress-text');
+    
+    // Disable all workflow buttons in this row
+    const workflowButtons = row.querySelectorAll('.workflow-btn');
+    workflowButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    });
+    
+    // Show progress
+    progressDiv.classList.add('show');
+    progressText.textContent = 'Starting...';
+    progressBar.style.width = '10%';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('firmware_id', firmwareId);
+    formData.append('workflow_type', workflowType);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    // Simulate progress updates
+    let progress = 10;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+        
+        if (progress < 30) progressText.textContent = 'Initializing...';
+        else if (progress < 60) progressText.textContent = 'Processing...';
+        else progressText.textContent = 'Finalizing...';
+    }, 1000);
+    
+    // Make the API call
+    fetch("{% url 'xscout:run_complete_workflow' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        if (data.success) {
+            progressText.textContent = 'Completed!';
+            progressBar.classList.remove('bg-blue-600');
+            progressBar.classList.add('bg-green-600');
+            
+            // Show success message
+            alert(`Workflow '${workflowType}' completed successfully!\n\n${data.message}`);
+            
+            // Reload page after a moment to update statuses
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            progressText.textContent = 'Failed!';
+            progressBar.classList.remove('bg-blue-600');
+            progressBar.classList.add('bg-red-600');
+            
+            alert(`Workflow failed: ${data.message}`);
+            
+            // Re-enable buttons
+            workflowButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+            
+            setTimeout(() => {
+                progressDiv.classList.remove('show');
+                progressBar.style.width = '0%';
+                progressBar.classList.remove('bg-red-600');
+                progressBar.classList.add('bg-blue-600');
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        console.error('Error:', error);
+        
+        progressText.textContent = 'Error!';
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-red-600');
+        
+        alert('An error occurred while running the workflow');
+        
+        // Re-enable buttons
+        workflowButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        });
+        
+        setTimeout(() => {
+            progressDiv.classList.remove('show');
+            progressBar.style.width = '0%';
+            progressBar.classList.remove('bg-red-600');
+            progressBar.classList.add('bg-blue-600');
+        }, 3000);
+    });
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,48 @@
+<li class="tree-node">
+    <div class="flex items-center py-1">
+        {% if node.type == 'directory' %}
+            {% if node.children %}
+                <button class="toggle-btn mr-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors {% if not node.expanded %}collapsed{% endif %}" onclick="toggleNode(this)">
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+            {% else %}
+                <span class="mr-3 text-xs">&nbsp;</span>
+            {% endif %}
+            {% if node.is_rootfs %}
+                <i class="fas fa-folder-open text-orange-500 dark:text-orange-400 mr-2"></i>
+                <span class="text-orange-700 dark:text-orange-300 font-bold">{{ node.name }} <span class="text-xs">(rootfs)</span></span>
+            {% elif node.inside_rootfs %}
+                <i class="fas fa-folder text-purple-500 dark:text-purple-400 mr-2"></i>
+                <span class="text-purple-700 dark:text-purple-300 font-medium">{{ node.name }}</span>
+            {% else %}
+                <i class="fas fa-folder text-blue-500 dark:text-blue-400 mr-2"></i>
+                <span class="text-gray-800 dark:text-gray-200 font-medium">{{ node.name }}</span>
+            {% endif %}
+        {% elif node.type == 'file' %}
+            <span class="mr-3 text-xs">&nbsp;</span>
+            {% if node.inside_rootfs %}
+                <i class="fas fa-file text-purple-400 mr-2"></i>
+                <span class="text-purple-600 dark:text-purple-400">{{ node.name }}</span>
+            {% else %}
+                <i class="fas fa-file text-gray-400 mr-2"></i>
+                <span class="text-gray-600 dark:text-gray-400">{{ node.name }}</span>
+            {% endif %}
+        {% elif node.type == 'note' %}
+            <span class="mr-3 text-xs">&nbsp;</span>
+            <i class="fas fa-ellipsis-h text-yellow-500 mr-2"></i>
+            <span class="text-yellow-600 dark:text-yellow-400 italic text-sm">{{ node.name }}</span>
+        {% elif node.type == 'error' %}
+            <span class="mr-3 text-xs">&nbsp;</span>
+            <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+            <span class="text-red-600 dark:text-red-400 text-sm">{{ node.name }}</span>
+        {% endif %}
+    </div>
+    
+    {% if node.children %}
+        <ul class="tree-children ml-24 border-l border-gray-200 dark:border-gray-600 pl-12 {% if not node.expanded %}collapsed{% endif %}">
+            {% for child in node.children %}
+                {% include 'xScout/partials/directory_tree_node.html' with node=child %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li> 
